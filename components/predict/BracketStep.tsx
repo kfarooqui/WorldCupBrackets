@@ -21,19 +21,19 @@ const ROUND_TITLE: Record<Round, string> = {
 export default function BracketStep({
   teamsById,
   advancement,
-  sortedThirds,
+  thirds,
   picks,
   onPick,
   readOnly,
 }: {
   teamsById: Map<number, Team>;
   advancement: Advancement;
-  sortedThirds: number[];
+  thirds: number[];
   picks: BracketPicks;
   onPick: (round: Round, slot: number, teamId: number) => void;
   readOnly: boolean;
 }) {
-  const occ = computeOccupants(advancement, sortedThirds, picks);
+  const occ = computeOccupants(advancement, thirds, picks);
   const champion = picks.final?.[0] ?? null;
 
   return (

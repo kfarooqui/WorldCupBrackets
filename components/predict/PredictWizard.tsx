@@ -15,7 +15,6 @@ import {
   type BracketPicks,
   type Round,
   ROUNDS,
-  sortThirds,
   sanitizePicks,
   isBracketComplete,
   advancementComplete,
@@ -108,11 +107,10 @@ export default function PredictWizard(props: {
     });
     return a;
   }, [advancement]);
-  const sortedThirds = useMemo(() => sortThirds(thirds), [thirds]);
 
   // ── Handlers (cascade-clean the bracket on upstream change) ───────────
   function reflowBracket(nextAdv: Advancement, nextThirds: number[], picks: BracketPicks) {
-    return sanitizePicks(nextAdv, sortThirds(nextThirds), picks);
+    return sanitizePicks(nextAdv, nextThirds, picks);
   }
 
   const onMatchChange = (matchId: number, v: MatchPick) =>
@@ -293,7 +291,7 @@ export default function PredictWizard(props: {
         <BracketStep
           teamsById={teamsById}
           advancement={adv}
-          sortedThirds={sortedThirds}
+          thirds={thirds}
           picks={bracketPicks}
           onPick={onPick}
           readOnly={readOnly}

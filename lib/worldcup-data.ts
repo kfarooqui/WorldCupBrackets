@@ -96,6 +96,11 @@ export function teamIdsInGroup(letter: string): number[] {
   return [1, 2, 3, 4].map((p) => gi * 4 + p);
 }
 
+/** The group letter a team id belongs to (ids are assigned in group order). */
+export function groupLetterOfTeam(teamId: number): string {
+  return GROUP_LETTERS[Math.floor((teamId - 1) / 4)];
+}
+
 /**
  * The six round-robin pairings within a 4-team group, as 1-based positions.
  * Generates 72 matches total (6 × 12 groups).
