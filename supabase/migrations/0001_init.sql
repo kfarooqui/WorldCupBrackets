@@ -182,7 +182,9 @@ create policy "profiles self update" on public.profiles for update
 create or replace function public.guard_profile_update()
 returns trigger language plpgsql security definer set search_path = public as $$
 begin
-  if not public.is_admin() then
+  -- Only restrict logged-in non-admin users. Trusted server/service-role updates
+  -- (admin approvals) have no auth.uid() and are allowed through.
+  if auth.uid() is not null and not public.is_admin() then
     new.role   := old.role;
     new.status := old.status;
   end if;
