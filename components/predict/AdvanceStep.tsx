@@ -12,6 +12,7 @@ export default function AdvanceStep({
   onChange,
   thirds,
   onToggleThird,
+  onAutoFill,
   readOnly,
 }: {
   teamsById: Map<number, Team>;
@@ -19,6 +20,7 @@ export default function AdvanceStep({
   onChange: (letter: string, rank: GroupRank) => void;
   thirds: number[];
   onToggleThird: (teamId: number) => void;
+  onAutoFill: () => void;
   readOnly: boolean;
 }) {
   // The pool of 3rd-place teams the user has named, one per group.
@@ -29,10 +31,23 @@ export default function AdvanceStep({
   return (
     <div className="space-y-6">
       <div className="card">
-        <h3 className="font-bold">Group finishing order</h3>
-        <p className="mt-1 text-sm text-[var(--muted)]">
-          Rank the top 3 of each group. The 4th-place team is eliminated and won&apos;t
-          appear in your bracket.
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <h3 className="font-bold">Group finishing order</h3>
+            <p className="mt-1 text-sm text-[var(--muted)]">
+              Auto-filled from your group-match picks — tweak any group below. The 4th-place
+              team is eliminated and won&apos;t appear in your bracket.
+            </p>
+          </div>
+          {!readOnly && (
+            <button onClick={onAutoFill} className="btn-ghost shrink-0 text-xs">
+              ⚡ Re-fill from my group picks
+            </button>
+          )}
+        </div>
+        <p className="mt-2 text-xs text-[var(--muted)]">
+          Tip: where teams tie on points (e.g. you didn&apos;t enter scores), the order is a
+          guess — drag-free, just re-pick from the dropdowns to set who finishes ahead.
         </p>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           {GROUP_LETTERS.map((letter) => {

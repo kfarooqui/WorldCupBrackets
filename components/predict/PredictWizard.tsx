@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type {
   Team,
@@ -30,6 +30,7 @@ import GroupStep, { type MatchPick } from "./GroupStep";
 import AdvanceStep, { type GroupRank } from "./AdvanceStep";
 import BracketStep from "./BracketStep";
 import { GROUP_LETTERS } from "@/lib/worldcup-data";
+import { standingsFromPicks } from "@/lib/predict-standings";
 
 type Step = "group" | "advance" | "bracket";
 const STEPS: { key: Step; label: string }[] = [
@@ -153,6 +154,35 @@ export default function PredictWizard(props: {
     });
   };
 
+  // Populate "who advances" from the user's group-match picks.
+  const fillFromGroupPicks = () => {
+    const { byGroup, bestThirds } = standingsFromPicks(props.groupMatches, matchPicks);
+    const nextRanks: Record<string, GroupRank> = {};
+    const nextAdv: Advancement = {};
+    GROUP_LETTERS.forEach((l) => {
+      const [a, b, c] = byGroup[l] ?? [];
+      nextRanks[l] = { first: a ?? null, second: b ?? null, third: c ?? null };
+      nextAdv[l] = { first: a ?? null, second: b ?? null };
+    });
+    setAdvancement(nextRanks);
+    setThirds(bestThirds);
+    setBracketPicks((bp) => reflowBracket(nextAdv, bestThirds, bp));
+  };
+
+  // Navigate to a step; auto-fill "who advances" the first time it's opened empty.
+  const autoFilled = useRef(false);
+  const goToStep = (next: Step) => {
+    if (next === "advance" && !readOnly && !autoFilled.current) {
+      const hasAdv = GROUP_LETTERS.some((l) => advancement[l]?.first || advancement[l]?.second);
+      const hasGroupPicks = Object.values(matchPicks).some((p) => p.pick);
+      if (!hasAdv && hasGroupPicks) {
+        autoFilled.current = true;
+        fillFromGroupPicks();
+      }
+    }
+    setStep(next);
+  };
+
   // ── Payload + progress ────────────────────────────────────────────────
   function buildPayload(): SavePayload {
     const matches = Object.entries(matchPicks)
@@ -226,7 +256,7 @@ export default function PredictWizard(props: {
           return (
             <button
               key={s.key}
-              onClick={() => setStep(s.key)}
+              onClick={() => goToStep(s.key)}
               className={`rounded-lg px-3 py-2 text-sm font-medium ${
                 step === s.key
                   ? "bg-[var(--primary)] text-white"
@@ -255,6 +285,7 @@ export default function PredictWizard(props: {
           onChange={onAdvChange}
           thirds={thirds}
           onToggleThird={onToggleThird}
+          onAutoFill={fillFromGroupPicks}
           readOnly={readOnly}
         />
       )}
