@@ -21,9 +21,12 @@ export default async function Home() {
           </p>
           <ul className="mt-6 space-y-2 text-sm text-[var(--muted)]">
             <li>✅ 48 teams · 12 groups · Round of 32 to the Final</li>
-            <li>✅ 1 pt per correct result + bonus for exact scores</li>
-            <li>✅ Escalating points the deeper your picks go</li>
+            <li>✅ 1 pt per correct group result, +1 for the exact score</li>
+            <li>✅ 2 pts for every correct knockout pick, up to the champion</li>
           </ul>
+          <Link href="/how-it-works" className="mt-4 inline-block text-sm text-[var(--accent)] hover:underline">
+            Read the full rules →
+          </Link>
         </div>
         <RequestAccessForm />
       </div>

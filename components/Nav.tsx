@@ -14,6 +14,9 @@ export default async function Nav() {
         </Link>
 
         <div className="flex items-center gap-4 text-sm">
+          <Link href="/how-it-works" className="hover:text-[var(--accent)]">
+            How it works
+          </Link>
           {profile?.status === "approved" && (
             <>
               <Link href="/predict" className="hover:text-[var(--accent)]">

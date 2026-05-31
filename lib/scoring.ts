@@ -6,16 +6,16 @@ export const SCORING = {
   /** Correct group-match outcome (Home win / Draw / Away win). */
   groupOutcome: 1,
   /** Bonus when a predicted scoreline exactly matches the real result. */
-  groupExactScore: 2,
-  /** Each team correctly predicted to reach the Round of 32 (i.e. to qualify). */
-  reachR32: 1,
-  /** Each team correctly predicted to reach the given knockout round. */
+  groupExactScore: 1,
+  /** Qualifying for the Round of 32 is decided by the group stage (no extra pts). */
+  reachR32: 0,
+  /** 2 pts for each correct winner pick in the elimination rounds (flat). */
   reachR16: 2,
-  reachQF: 4,
-  reachSF: 8,
-  reachFinal: 12,
-  /** Bonus for correctly predicting the champion. */
-  champion: 8,
+  reachQF: 2,
+  reachSF: 2,
+  reachFinal: 2,
+  /** Correctly predicting the champion (the Final winner). */
+  champion: 2,
 } as const;
 
 export type KnockoutRound = "r32" | "r16" | "qf" | "sf" | "final";
