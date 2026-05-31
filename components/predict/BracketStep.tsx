@@ -94,7 +94,13 @@ export default function BracketStep({
                     )}
                     {KO_SCHEDULE[round]?.[slot] && (
                       <p className="px-1 text-[10px] leading-tight text-[var(--muted)]">
-                        🗓 {fixtureLine(KO_SCHEDULE[round][slot])}
+                        🗓{" "}
+                        {fixtureLine({
+                          match_date: KO_SCHEDULE[round][slot].date,
+                          kickoff: KO_SCHEDULE[round][slot].time,
+                          venue: KO_SCHEDULE[round][slot].venue,
+                          city: KO_SCHEDULE[round][slot].city,
+                        })}
                       </p>
                     )}
                   </div>
