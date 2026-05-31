@@ -2,6 +2,7 @@
 
 import type { Match, Team, Pick } from "@/lib/types";
 import { GROUP_LETTERS } from "@/lib/worldcup-data";
+import { fixtureLine } from "@/lib/format";
 
 export type MatchPick = {
   pick: Pick | null;
@@ -42,10 +43,8 @@ export default function GroupStep({
                 const p = picks[m.id] ?? { pick: null, ph: "", pa: "" };
                 const set = (v: Partial<MatchPick>) => onChange(m.id, { ...p, ...v });
                 return (
-                  <div
-                    key={m.id}
-                    className="grid grid-cols-1 gap-2 rounded-lg bg-[var(--surface-2)] p-2 sm:grid-cols-[1fr_auto]"
-                  >
+                  <div key={m.id} className="rounded-lg bg-[var(--surface-2)] p-2">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto]">
                     <div className="grid grid-cols-3 gap-1">
                       <PickButton
                         label={`${home?.flag_emoji ?? ""} ${home?.name ?? "?"}`}
@@ -89,6 +88,12 @@ export default function GroupStep({
                         aria-label="predicted away score"
                       />
                     </div>
+                    </div>
+                    {fixtureLine(m) && (
+                      <p className="mt-1 px-1 text-[11px] text-[var(--muted)]">
+                        🗓 {fixtureLine(m)}
+                      </p>
+                    )}
                   </div>
                 );
               })}

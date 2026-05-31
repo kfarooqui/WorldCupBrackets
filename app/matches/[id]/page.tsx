@@ -4,6 +4,7 @@ import { requireApproved, predictionsLocked } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Profile, Match, Team, MatchPrediction, Pick } from "@/lib/types";
 import { scoreGroupPrediction } from "@/lib/scoring";
+import { fixtureLine } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -71,6 +72,9 @@ export default async function MatchPage({
           </div>
         ) : (
           <div className="mt-1 text-sm text-[var(--muted)]">Not played yet</div>
+        )}
+        {fixtureLine(m) && (
+          <div className="mt-2 text-xs text-[var(--muted)]">🗓 {fixtureLine(m)}</div>
         )}
       </div>
 

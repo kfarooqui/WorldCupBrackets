@@ -32,6 +32,10 @@ export type Match = {
   home_team_id: number | null;
   away_team_id: number | null;
   kickoff_at: string | null;
+  match_date: string | null;
+  kickoff: string | null; // local kickoff label, e.g. "3:00 PM ET"
+  venue: string | null;
+  city: string | null;
   home_score: number | null;
   away_score: number | null;
   status: MatchStatus;

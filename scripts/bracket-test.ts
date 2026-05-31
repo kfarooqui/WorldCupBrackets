@@ -15,7 +15,8 @@ import { GROUP_LETTERS, teamIdsInGroup, groupLetterOfTeam } from "../lib/worldcu
 let pass = 0, fail = 0;
 const check = (name: string, cond: boolean) => {
   console.log(`${cond ? "✓" : "✗"} ${name}`);
-  cond ? pass++ : fail++;
+  if (cond) pass++;
+  else fail++;
 };
 
 // Sample: each group's 1st/2nd/3rd = draw positions 1/2/3.

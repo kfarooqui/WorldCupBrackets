@@ -1,3 +1,5 @@
+import { GROUP_SCHEDULE, KO_SCHEDULE } from "./schedule";
+
 // Real 2026 FIFA World Cup final draw (Washington D.C., 5 Dec 2025).
 // Team ids are assigned 1..48 in group order: A=1-4, B=5-8, … L=45-48.
 
@@ -101,19 +103,6 @@ export function groupLetterOfTeam(teamId: number): string {
   return GROUP_LETTERS[Math.floor((teamId - 1) / 4)];
 }
 
-/**
- * The six round-robin pairings within a 4-team group, as 1-based positions.
- * Generates 72 matches total (6 × 12 groups).
- */
-const GROUP_PAIRINGS: [number, number][] = [
-  [1, 2],
-  [3, 4],
-  [1, 3],
-  [2, 4],
-  [4, 1],
-  [2, 3],
-];
-
 export type SeedMatch = {
   id: number;
   stage: string;
@@ -122,54 +111,63 @@ export type SeedMatch = {
   slot_label: string | null;
   home_team_id: number | null;
   away_team_id: number | null;
-  kickoff_at: string | null;
+  match_date: string | null;
+  kickoff: string | null;
+  venue: string | null;
+  city: string | null;
 };
 
-/** Generate the 72 group matches + 31 empty knockout slots (ids 73..103). */
+/**
+ * Build the full 104-match seed from the real 2026 schedule: 72 group matches
+ * (with real fixtures/dates/venues) + knockout slots (dates/venues set, teams
+ * filled in as the tournament progresses). Knockout match ids 73.. are ordered
+ * to line up with the bracket FEED map slot order.
+ */
 export function buildSeedMatches(): SeedMatch[] {
+  const byCode = new Map(TEAMS.map((t) => [t.code, t.id]));
   const matches: SeedMatch[] = [];
-  let id = 1;
 
-  // Group stage spread across 11–27 June 2026 (best-effort; admin can edit).
-  let day = 0;
-  GROUP_LETTERS.forEach((letter) => {
-    const ids = teamIdsInGroup(letter);
-    GROUP_PAIRINGS.forEach(([a, b], pairIdx) => {
-      const date = new Date(Date.UTC(2026, 5, 11 + Math.floor(day / 4)));
-      matches.push({
-        id,
-        stage: "group",
-        group_letter: letter,
-        match_no: id,
-        slot_label: `Group ${letter}`,
-        home_team_id: ids[a - 1],
-        away_team_id: ids[b - 1],
-        kickoff_at: date.toISOString(),
-      });
-      id++;
-      day += pairIdx % 2; // rough spread
+  for (const f of GROUP_SCHEDULE) {
+    const home = byCode.get(f.home)!;
+    const away = byCode.get(f.away)!;
+    matches.push({
+      id: f.match,
+      stage: "group",
+      group_letter: groupLetterOfTeam(home),
+      match_no: f.match,
+      slot_label: `Group ${groupLetterOfTeam(home)}`,
+      home_team_id: home,
+      away_team_id: away,
+      match_date: f.date,
+      kickoff: f.time,
+      venue: f.venue,
+      city: f.city,
     });
-  });
+  }
 
-  // Empty knockout slots — admin fills the real matchups after the group stage.
-  const knockout: [string, number][] = [
+  const koOrder: [string, number][] = [
     ["r32", 16],
     ["r16", 8],
     ["qf", 4],
     ["sf", 2],
     ["final", 1],
   ];
-  knockout.forEach(([stage, count]) => {
+  let id = 73;
+  koOrder.forEach(([stage, count]) => {
     for (let i = 0; i < count; i++) {
+      const f = KO_SCHEDULE[stage][i];
       matches.push({
         id,
         stage,
         group_letter: null,
         match_no: id,
-        slot_label: `${stage.toUpperCase()}-${i + 1}`,
+        slot_label: `${stage.toUpperCase()} ${i + 1}`,
         home_team_id: null,
         away_team_id: null,
-        kickoff_at: null,
+        match_date: f?.date ?? null,
+        kickoff: f?.time ?? null,
+        venue: f?.venue ?? null,
+        city: f?.city ?? null,
       });
       id++;
     }

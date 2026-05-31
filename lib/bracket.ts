@@ -72,6 +72,19 @@ export const FEED: Record<Exclude<Round, "r32">, [number, number][]> = {
   final: [[0, 1]],
 };
 
+/** Human label for one R32 source slot, e.g. "Winner A", "Runner-up B", "3rd C/E/F/H/I". */
+function sourceLabel(s: R32Source): string {
+  if ("thirdSlot" in s) return `3rd ${THIRD_SLOT_GROUPS[s.thirdSlot].join("/")}`;
+  return `${s.pos === "1" ? "Winner" : "Runner-up"} ${s.group}`;
+}
+
+/** Descriptor for a Round-of-32 match by slot index, e.g. "Winner A vs 3rd C/E/F/H/I". */
+export function r32MatchLabel(index: number): string {
+  const m = R32_MATCHES[index];
+  if (!m) return "";
+  return `${sourceLabel(m[0])} vs ${sourceLabel(m[1])}`;
+}
+
 export type Advancement = {
   [letter: string]: { first: number | null; second: number | null };
 };

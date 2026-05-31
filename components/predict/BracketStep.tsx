@@ -5,10 +5,13 @@ import {
   ROUNDS,
   ROUND_SIZE,
   computeOccupants,
+  r32MatchLabel,
   type Advancement,
   type BracketPicks,
   type Round,
 } from "@/lib/bracket";
+import { KO_SCHEDULE } from "@/lib/schedule";
+import { fixtureLine } from "@/lib/format";
 
 const ROUND_TITLE: Record<Round, string> = {
   r32: "Round of 32",
@@ -66,25 +69,34 @@ export default function BracketStep({
                 const [top, bot] = occ[round][slot];
                 const chosen = picks[round]?.[slot] ?? null;
                 return (
-                  <div
-                    key={slot}
-                    className="overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface-2)]"
-                  >
-                    <TeamSlot
-                      teamId={top}
-                      team={top ? teamsById.get(top) : undefined}
-                      chosen={chosen === top}
-                      onClick={() => top && onPick(round, slot, top)}
-                      readOnly={readOnly}
-                    />
-                    <div className="h-px bg-[var(--border)]" />
-                    <TeamSlot
-                      teamId={bot}
-                      team={bot ? teamsById.get(bot) : undefined}
-                      chosen={chosen === bot}
-                      onClick={() => bot && onPick(round, slot, bot)}
-                      readOnly={readOnly}
-                    />
+                  <div key={slot}>
+                    <div className="overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface-2)]">
+                      <TeamSlot
+                        teamId={top}
+                        team={top ? teamsById.get(top) : undefined}
+                        chosen={chosen === top}
+                        onClick={() => top && onPick(round, slot, top)}
+                        readOnly={readOnly}
+                      />
+                      <div className="h-px bg-[var(--border)]" />
+                      <TeamSlot
+                        teamId={bot}
+                        team={bot ? teamsById.get(bot) : undefined}
+                        chosen={chosen === bot}
+                        onClick={() => bot && onPick(round, slot, bot)}
+                        readOnly={readOnly}
+                      />
+                    </div>
+                    {round === "r32" && (
+                      <p className="mt-0.5 px-1 text-[10px] font-medium leading-tight text-[var(--accent)]">
+                        {r32MatchLabel(slot)}
+                      </p>
+                    )}
+                    {KO_SCHEDULE[round]?.[slot] && (
+                      <p className="px-1 text-[10px] leading-tight text-[var(--muted)]">
+                        🗓 {fixtureLine(KO_SCHEDULE[round][slot])}
+                      </p>
+                    )}
                   </div>
                 );
               })}

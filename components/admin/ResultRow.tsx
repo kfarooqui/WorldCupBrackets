@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import type { Match, Team } from "@/lib/types";
 import { saveResult, clearResult, setKnockoutTeams } from "@/app/actions/results";
+import { fixtureLine } from "@/lib/format";
 
 export default function ResultRow({
   match,
@@ -33,7 +34,8 @@ export default function ResultRow({
   const finished = match.status === "finished";
 
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-lg bg-[var(--surface-2)] p-2 text-sm">
+    <div className="rounded-lg bg-[var(--surface-2)] p-2">
+    <div className="flex flex-wrap items-center gap-2 text-sm">
       <span className="w-14 shrink-0 text-xs text-[var(--muted)]">{match.slot_label}</span>
 
       {allowTeamEdit ? (
@@ -81,6 +83,10 @@ export default function ResultRow({
           </button>
         </>
       )}
+    </div>
+    {fixtureLine(match) && (
+      <p className="mt-1 text-[11px] text-[var(--muted)]">🗓 {fixtureLine(match)}</p>
+    )}
     </div>
   );
 }

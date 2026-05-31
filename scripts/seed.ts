@@ -48,7 +48,10 @@ async function main() {
     slot_label: m.slot_label,
     home_team_id: m.home_team_id,
     away_team_id: m.away_team_id,
-    kickoff_at: m.kickoff_at,
+    match_date: m.match_date,
+    kickoff: m.kickoff,
+    venue: m.venue,
+    city: m.city,
     status: "scheduled",
   }));
   const { error: matchErr } = await supabase
