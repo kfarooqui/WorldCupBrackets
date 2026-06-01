@@ -73,7 +73,10 @@ export default function BracketStep({
                   const [top, bot] = occ[round][slot];
                   const chosen = picks[round]?.[slot] ?? null;
                   return (
-                    <div key={slot} className="relative flex flex-1 flex-col justify-center py-1">
+                    <div
+                      key={slot}
+                      className="relative flex min-h-[132px] flex-1 flex-col justify-center py-1"
+                    >
                       {/* Connector to the next round (lives in the gap to the right) */}
                       {round !== "final" && (
                         <>
@@ -89,40 +92,45 @@ export default function BracketStep({
                       {round !== "r32" && (
                         <div className="absolute left-0 top-1/2 h-px w-4 -translate-x-full -translate-y-1/2 bg-[var(--border)]" />
                       )}
-                      <div className="overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface-2)]">
-                        <TeamSlot
-                          teamId={top}
-                          team={top ? teamsById.get(top) : undefined}
-                          chosen={chosen === top}
-                          onClick={() => top && onPick(round, slot, top)}
-                          readOnly={readOnly}
-                        />
-                        <div className="h-px bg-[var(--border)]" />
-                        <TeamSlot
-                          teamId={bot}
-                          team={bot ? teamsById.get(bot) : undefined}
-                          chosen={chosen === bot}
-                          onClick={() => bot && onPick(round, slot, bot)}
-                          readOnly={readOnly}
-                        />
+                      {/* Card is the only centered element, so connectors meet its
+                          vertical middle. Labels hang below without shifting it. */}
+                      <div className="relative">
+                        <div className="overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface-2)]">
+                          <TeamSlot
+                            teamId={top}
+                            team={top ? teamsById.get(top) : undefined}
+                            chosen={chosen === top}
+                            onClick={() => top && onPick(round, slot, top)}
+                            readOnly={readOnly}
+                          />
+                          <div className="h-px bg-[var(--border)]" />
+                          <TeamSlot
+                            teamId={bot}
+                            team={bot ? teamsById.get(bot) : undefined}
+                            chosen={chosen === bot}
+                            onClick={() => bot && onPick(round, slot, bot)}
+                            readOnly={readOnly}
+                          />
+                        </div>
+                        <div className="absolute left-0 right-0 top-full pt-0.5">
+                          {round === "r32" && (
+                            <p className="px-1 text-[10px] font-medium leading-tight text-[var(--accent)]">
+                              {r32MatchLabel(slot)}
+                            </p>
+                          )}
+                          {KO_SCHEDULE[round]?.[slot] && (
+                            <p className="px-1 text-[10px] leading-tight text-[var(--muted)]">
+                              🗓{" "}
+                              {fixtureLine({
+                                match_date: KO_SCHEDULE[round][slot].date,
+                                kickoff: KO_SCHEDULE[round][slot].time,
+                                venue: KO_SCHEDULE[round][slot].venue,
+                                city: KO_SCHEDULE[round][slot].city,
+                              })}
+                            </p>
+                          )}
+                        </div>
                       </div>
-                      {round === "r32" && (
-                        <p className="mt-0.5 px-1 text-[10px] font-medium leading-tight text-[var(--accent)]">
-                          {r32MatchLabel(slot)}
-                        </p>
-                      )}
-                      {KO_SCHEDULE[round]?.[slot] && (
-                        <p className="px-1 text-[10px] leading-tight text-[var(--muted)]">
-                          🗓{" "}
-                          {fixtureLine({
-                            match_date: KO_SCHEDULE[round][slot].date,
-                            kickoff: KO_SCHEDULE[round][slot].time,
-                            venue: KO_SCHEDULE[round][slot].venue,
-                            city: KO_SCHEDULE[round][slot].city,
-                          })}
-                        </p>
-                      )}
-                    </div>
                   );
                 })}
               </div>
