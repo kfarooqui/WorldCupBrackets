@@ -28,8 +28,12 @@ import {
 import GroupStep, { type MatchPick } from "./GroupStep";
 import AdvanceStep, { type GroupRank } from "./AdvanceStep";
 import BracketStep from "./BracketStep";
-import { GROUP_LETTERS } from "@/lib/worldcup-data";
-import { standingsFromPicks } from "@/lib/predict-standings";
+import { GROUP_LETTERS, teamIdsInGroup } from "@/lib/worldcup-data";
+import {
+  standingsFromPicks,
+  computeStats,
+  groupOrderConsistent,
+} from "@/lib/predict-standings";
 
 type Step = "group" | "advance" | "bracket";
 const STEPS: { key: Step; label: string }[] = [
@@ -112,6 +116,23 @@ export default function PredictWizard(props: {
     });
     return a;
   }, [advancement]);
+
+  // Groups whose chosen finishing order contradicts the group-match picks
+  // (a team seeded above another that strictly outscores it). Ties are allowed.
+  const stats = useMemo(
+    () => computeStats(props.groupMatches, matchPicks),
+    [props.groupMatches, matchPicks],
+  );
+  const inconsistentGroups = useMemo(() => {
+    return GROUP_LETTERS.filter((l) => {
+      const r = advancement[l];
+      if (!r?.first || !r?.second || !r?.third) return false;
+      const ids = teamIdsInGroup(l);
+      const fourth = ids.find((id) => id !== r.first && id !== r.second && id !== r.third) ?? null;
+      return !groupOrderConsistent(stats, [r.first, r.second, r.third, fourth]);
+    });
+  }, [advancement, stats]);
+  const isConsistent = inconsistentGroups.length === 0;
 
   // ── Handlers (cascade-clean the bracket on upstream change) ───────────
   function reflowBracket(nextAdv: Advancement, nextThirds: number[], picks: BracketPicks) {
@@ -232,11 +253,15 @@ export default function PredictWizard(props: {
     startSave(async () => {
       setMsg(null);
       const res = await savePredictions(buildPayload());
-      setMsg(res.ok ? "Progress saved." : res.error ?? "Save failed.");
+      if (!res.ok) setMsg(res.error ?? "Save failed.");
+      else if (!isConsistent)
+        setMsg("Saved — but your bracket doesn't match your group picks yet (see warning above). You can't submit until it does.");
+      else setMsg("Progress saved.");
     });
 
   const doSubmit = () =>
     startSave(async () => {
+      if (!isConsistent) return; // guarded by the disabled button too
       setMsg(null);
       const res = await submitPredictions(buildPayload());
       if (res.ok) router.refresh();
@@ -260,6 +285,25 @@ export default function PredictWizard(props: {
           onReopen={doReopen}
         />
       </div>
+
+      {/* Inconsistency warning — group picks no longer match the seeds/bracket */}
+      {!readOnly && !isConsistent && (
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-yellow-500/60 bg-yellow-500/10 p-4">
+          <div className="text-sm">
+            <p className="font-bold text-yellow-300">
+              ⚠️ Your bracket doesn&apos;t match your group picks
+            </p>
+            <p className="mt-1 text-[var(--muted)]">
+              The finishing order for {inconsistentGroups.length === 1 ? "Group" : "Groups"}{" "}
+              <strong>{inconsistentGroups.join(", ")}</strong> contradicts your group-match
+              results. You can save, but you can&apos;t submit until it&apos;s fixed.
+            </p>
+          </div>
+          <button onClick={fillFromGroupPicks} className="btn-primary shrink-0">
+            ⚡ Re-fill from my group picks
+          </button>
+        </div>
+      )}
 
       {/* Step tabs */}
       <div className="mb-5 flex gap-2">
@@ -327,9 +371,15 @@ export default function PredictWizard(props: {
             </button>
             <button
               onClick={doSubmit}
-              disabled={saving || !allComplete}
+              disabled={saving || !allComplete || !isConsistent}
               className="btn-primary"
-              title={allComplete ? "" : "Complete all three steps to submit"}
+              title={
+                !isConsistent
+                  ? "Fix the group/bracket mismatch above before submitting"
+                  : allComplete
+                    ? ""
+                    : "Complete all three steps to submit"
+              }
             >
               Submit my picks
             </button>
