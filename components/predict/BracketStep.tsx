@@ -131,6 +131,7 @@ export default function BracketStep({
                           )}
                         </div>
                       </div>
+                    </div>
                   );
                 })}
               </div>
