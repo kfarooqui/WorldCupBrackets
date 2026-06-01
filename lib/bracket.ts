@@ -85,6 +85,26 @@ export function r32MatchLabel(index: number): string {
   return `${sourceLabel(m[0])} vs ${sourceLabel(m[1])}`;
 }
 
+/**
+ * Visual top-to-bottom order of each round's matches so the bracket reads as a
+ * tree: the two games feeding a given next-round game are always adjacent.
+ * Derived from FEED by walking down from the Final.
+ */
+export const DISPLAY_ORDER: Record<Round, number[]> = (() => {
+  const order = {} as Record<Round, number[]>;
+  order.final = [0];
+  const steps: [Exclude<Round, "r32">, Round][] = [
+    ["final", "sf"],
+    ["sf", "qf"],
+    ["qf", "r16"],
+    ["r16", "r32"],
+  ];
+  for (const [hi, lo] of steps) {
+    order[lo] = order[hi].flatMap((slot) => FEED[hi][slot]);
+  }
+  return order;
+})();
+
 export type Advancement = {
   [letter: string]: { first: number | null; second: number | null };
 };
