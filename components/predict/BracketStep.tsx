@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import type { Team } from "@/lib/types";
 import {
   ROUNDS,
@@ -38,6 +39,14 @@ export default function BracketStep({
 }) {
   const occ = computeOccupants(advancement, thirds, picks);
   const champion = picks.final?.[0] ?? null;
+  const [round, setRound] = useState<Round>("r32");
+
+  const pickedCount = (r: Round) =>
+    Array.from({ length: ROUND_SIZE[r] }, (_, i) => i).filter(
+      (slot) => typeof picks[r]?.[slot] === "number",
+    ).length;
+
+  const roundIdx = ROUNDS.indexOf(round);
 
   return (
     <div>
@@ -58,57 +67,94 @@ export default function BracketStep({
         </div>
       )}
 
-      <div className="flex gap-4 overflow-x-auto pb-4">
-        {ROUNDS.map((round) => (
-          <div key={round} className="min-w-[210px] flex-shrink-0">
-            <h4 className="mb-2 text-center text-sm font-bold text-[var(--accent)]">
-              {ROUND_TITLE[round]}
-            </h4>
-            <div className="space-y-2">
-              {Array.from({ length: ROUND_SIZE[round] }, (_, slot) => {
-                const [top, bot] = occ[round][slot];
-                const chosen = picks[round]?.[slot] ?? null;
-                return (
-                  <div key={slot}>
-                    <div className="overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface-2)]">
-                      <TeamSlot
-                        teamId={top}
-                        team={top ? teamsById.get(top) : undefined}
-                        chosen={chosen === top}
-                        onClick={() => top && onPick(round, slot, top)}
-                        readOnly={readOnly}
-                      />
-                      <div className="h-px bg-[var(--border)]" />
-                      <TeamSlot
-                        teamId={bot}
-                        team={bot ? teamsById.get(bot) : undefined}
-                        chosen={chosen === bot}
-                        onClick={() => bot && onPick(round, slot, bot)}
-                        readOnly={readOnly}
-                      />
-                    </div>
-                    {round === "r32" && (
-                      <p className="mt-0.5 px-1 text-[10px] font-medium leading-tight text-[var(--accent)]">
-                        {r32MatchLabel(slot)}
-                      </p>
-                    )}
-                    {KO_SCHEDULE[round]?.[slot] && (
-                      <p className="px-1 text-[10px] leading-tight text-[var(--muted)]">
-                        🗓{" "}
-                        {fixtureLine({
-                          match_date: KO_SCHEDULE[round][slot].date,
-                          kickoff: KO_SCHEDULE[round][slot].time,
-                          venue: KO_SCHEDULE[round][slot].venue,
-                          city: KO_SCHEDULE[round][slot].city,
-                        })}
-                      </p>
-                    )}
-                  </div>
-                );
-              })}
+      {/* Round selector — keeps everything on screen with no horizontal scroll */}
+      <div className="mb-4 flex flex-wrap gap-2">
+        {ROUNDS.map((r) => {
+          const done = pickedCount(r);
+          const total = ROUND_SIZE[r];
+          return (
+            <button
+              key={r}
+              onClick={() => setRound(r)}
+              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                round === r
+                  ? "bg-[var(--primary)] text-white"
+                  : "bg-[var(--surface-2)] text-[var(--muted)] hover:text-[var(--foreground)]"
+              }`}
+            >
+              {ROUND_TITLE[r]}{" "}
+              <span className={done === total ? "text-green-300" : "opacity-70"}>
+                {done}/{total}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      <h3 className="mb-2 text-center text-base font-bold text-[var(--accent)]">
+        {ROUND_TITLE[round]}
+      </h3>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {Array.from({ length: ROUND_SIZE[round] }, (_, slot) => {
+          const [top, bot] = occ[round][slot];
+          const chosen = picks[round]?.[slot] ?? null;
+          return (
+            <div key={slot}>
+              <div className="overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface-2)]">
+                <TeamSlot
+                  teamId={top}
+                  team={top ? teamsById.get(top) : undefined}
+                  chosen={chosen === top}
+                  onClick={() => top && onPick(round, slot, top)}
+                  readOnly={readOnly}
+                />
+                <div className="h-px bg-[var(--border)]" />
+                <TeamSlot
+                  teamId={bot}
+                  team={bot ? teamsById.get(bot) : undefined}
+                  chosen={chosen === bot}
+                  onClick={() => bot && onPick(round, slot, bot)}
+                  readOnly={readOnly}
+                />
+              </div>
+              {round === "r32" && (
+                <p className="mt-0.5 px-1 text-[11px] font-medium leading-tight text-[var(--accent)]">
+                  {r32MatchLabel(slot)}
+                </p>
+              )}
+              {KO_SCHEDULE[round]?.[slot] && (
+                <p className="px-1 text-[11px] leading-tight text-[var(--muted)]">
+                  🗓{" "}
+                  {fixtureLine({
+                    match_date: KO_SCHEDULE[round][slot].date,
+                    kickoff: KO_SCHEDULE[round][slot].time,
+                    venue: KO_SCHEDULE[round][slot].venue,
+                    city: KO_SCHEDULE[round][slot].city,
+                  })}
+                </p>
+              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
+      </div>
+
+      {/* Prev / Next round */}
+      <div className="mt-5 flex justify-between">
+        <button
+          onClick={() => setRound(ROUNDS[roundIdx - 1])}
+          disabled={roundIdx === 0}
+          className="btn-ghost text-xs disabled:opacity-40"
+        >
+          ← {roundIdx > 0 ? ROUND_TITLE[ROUNDS[roundIdx - 1]] : ""}
+        </button>
+        <button
+          onClick={() => setRound(ROUNDS[roundIdx + 1])}
+          disabled={roundIdx === ROUNDS.length - 1}
+          className="btn-ghost text-xs disabled:opacity-40"
+        >
+          {roundIdx < ROUNDS.length - 1 ? ROUND_TITLE[ROUNDS[roundIdx + 1]] : ""} →
+        </button>
       </div>
     </div>
   );
