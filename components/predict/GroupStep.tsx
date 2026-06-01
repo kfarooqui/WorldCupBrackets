@@ -10,6 +10,14 @@ export type MatchPick = {
   pa: string; // predicted away score (optional)
 };
 
+/** Outcome implied by a complete predicted score, or null if incomplete. */
+function impliedOutcome(ph: string, pa: string): Pick | null {
+  if (ph === "" || pa === "") return null;
+  const h = Number(ph);
+  const a = Number(pa);
+  return h > a ? "HOME" : h < a ? "AWAY" : "DRAW";
+}
+
 export default function GroupStep({
   matches,
   teamsById,
@@ -41,7 +49,22 @@ export default function GroupStep({
                 const home = teamsById.get(m.home_team_id!);
                 const away = teamsById.get(m.away_team_id!);
                 const p = picks[m.id] ?? { pick: null, ph: "", pa: "" };
-                const set = (v: Partial<MatchPick>) => onChange(m.id, { ...p, ...v });
+                // Tapping a W/D/L button: set it, and clear any score that contradicts it.
+                const setPick = (outcome: Pick) => {
+                  const io = impliedOutcome(p.ph, p.pa);
+                  const clears = io !== null && io !== outcome;
+                  onChange(m.id, {
+                    pick: outcome,
+                    ph: clears ? "" : p.ph,
+                    pa: clears ? "" : p.pa,
+                  });
+                };
+                // Editing a score: keep it, and sync the W/D/L pick to match once complete.
+                const setScore = (field: "ph" | "pa", value: string) => {
+                  const next = { ...p, [field]: value };
+                  const io = impliedOutcome(next.ph, next.pa);
+                  onChange(m.id, { ...next, pick: io ?? next.pick });
+                };
                 return (
                   <div key={m.id} className="rounded-lg bg-[var(--surface-2)] p-2">
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto]">
@@ -49,21 +72,21 @@ export default function GroupStep({
                       <PickButton
                         label={`${home?.flag_emoji ?? ""} ${home?.name ?? "?"}`}
                         active={p.pick === "HOME"}
-                        onClick={() => set({ pick: "HOME" })}
+                        onClick={() => setPick("HOME")}
                         disabled={readOnly}
                         align="left"
                       />
                       <PickButton
                         label="Draw"
                         active={p.pick === "DRAW"}
-                        onClick={() => set({ pick: "DRAW" })}
+                        onClick={() => setPick("DRAW")}
                         disabled={readOnly}
                         align="center"
                       />
                       <PickButton
                         label={`${away?.name ?? "?"} ${away?.flag_emoji ?? ""}`}
                         active={p.pick === "AWAY"}
-                        onClick={() => set({ pick: "AWAY" })}
+                        onClick={() => setPick("AWAY")}
                         disabled={readOnly}
                         align="right"
                       />
@@ -74,7 +97,7 @@ export default function GroupStep({
                         inputMode="numeric"
                         className="input w-12 px-2 py-1 text-center"
                         value={p.ph}
-                        onChange={(e) => set({ ph: e.target.value.replace(/\D/g, "").slice(0, 2) })}
+                        onChange={(e) => setScore("ph", e.target.value.replace(/\D/g, "").slice(0, 2))}
                         disabled={readOnly}
                         aria-label="predicted home score"
                       />
@@ -83,7 +106,7 @@ export default function GroupStep({
                         inputMode="numeric"
                         className="input w-12 px-2 py-1 text-center"
                         value={p.pa}
-                        onChange={(e) => set({ pa: e.target.value.replace(/\D/g, "").slice(0, 2) })}
+                        onChange={(e) => setScore("pa", e.target.value.replace(/\D/g, "").slice(0, 2))}
                         disabled={readOnly}
                         aria-label="predicted away score"
                       />

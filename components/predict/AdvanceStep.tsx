@@ -35,8 +35,10 @@ export default function AdvanceStep({
           <div>
             <h3 className="font-bold">Group finishing order</h3>
             <p className="mt-1 text-sm text-[var(--muted)]">
-              Auto-filled from your group-match picks — tweak any group below. The 4th-place
-              team is eliminated and won&apos;t appear in your bracket.
+              Auto-filled from your group-match picks (and kept in sync as you change them)
+              until you customize a group here. The 4th-place team is eliminated and
+              won&apos;t appear in your bracket. <strong>Re-fill</strong> resyncs from your
+              group picks and resets any bracket games that no longer make sense.
             </p>
           </div>
           {!readOnly && (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type {
   Team,
@@ -94,6 +94,11 @@ export default function PredictWizard(props: {
     return o;
   });
 
+  // True once the user hand-edits the advancement step; we then stop auto-deriving
+  // it from group picks (so we don't clobber their manual seeding). Returning users
+  // with saved advancement start as "manual" too.
+  const [manualAdv, setManualAdv] = useState(props.initialAdvancement.length > 0);
+
   const [step, setStep] = useState<Step>("group");
   const [saving, startSave] = useTransition();
   const [, startReopen] = useTransition();
@@ -113,10 +118,32 @@ export default function PredictWizard(props: {
     return sanitizePicks(nextAdv, nextThirds, picks);
   }
 
-  const onMatchChange = (matchId: number, v: MatchPick) =>
-    setMatchPicks((s) => ({ ...s, [matchId]: v }));
+  // Re-derive advancement + thirds from a set of group picks, then cascade-clean
+  // the bracket (resetting any elimination game whose teams are no longer valid).
+  const reDerive = (picks: Record<number, MatchPick>) => {
+    const { byGroup, bestThirds } = standingsFromPicks(props.groupMatches, picks);
+    const nextRanks: Record<string, GroupRank> = {};
+    const nextAdv: Advancement = {};
+    GROUP_LETTERS.forEach((l) => {
+      const [a, b, c] = byGroup[l] ?? [];
+      nextRanks[l] = { first: a ?? null, second: b ?? null, third: c ?? null };
+      nextAdv[l] = { first: a ?? null, second: b ?? null };
+    });
+    setAdvancement(nextRanks);
+    setThirds(bestThirds);
+    setBracketPicks((bp) => reflowBracket(nextAdv, bestThirds, bp));
+  };
+
+  const onMatchChange = (matchId: number, v: MatchPick) => {
+    const nextPicks = { ...matchPicks, [matchId]: v };
+    setMatchPicks(nextPicks);
+    // While the user hasn't hand-edited "who advances", keep the seeds (and any
+    // affected bracket games) in sync with the group picks automatically.
+    if (!manualAdv) reDerive(nextPicks);
+  };
 
   const onAdvChange = (letter: string, rank: GroupRank) => {
+    setManualAdv(true);
     setAdvancement((s) => {
       const next = { ...s, [letter]: rank };
       const nextAdv: Advancement = {};
@@ -134,6 +161,7 @@ export default function PredictWizard(props: {
   };
 
   const onToggleThird = (teamId: number) => {
+    setManualAdv(true);
     setThirds((s) => {
       const next = s.includes(teamId)
         ? s.filter((t) => t !== teamId)
@@ -152,31 +180,18 @@ export default function PredictWizard(props: {
     });
   };
 
-  // Populate "who advances" from the user's group-match picks.
+  // "Re-fill from my group picks" — re-derive everything and resume auto-sync,
+  // resetting any now-invalid bracket games.
   const fillFromGroupPicks = () => {
-    const { byGroup, bestThirds } = standingsFromPicks(props.groupMatches, matchPicks);
-    const nextRanks: Record<string, GroupRank> = {};
-    const nextAdv: Advancement = {};
-    GROUP_LETTERS.forEach((l) => {
-      const [a, b, c] = byGroup[l] ?? [];
-      nextRanks[l] = { first: a ?? null, second: b ?? null, third: c ?? null };
-      nextAdv[l] = { first: a ?? null, second: b ?? null };
-    });
-    setAdvancement(nextRanks);
-    setThirds(bestThirds);
-    setBracketPicks((bp) => reflowBracket(nextAdv, bestThirds, bp));
+    setManualAdv(false);
+    reDerive(matchPicks);
   };
 
-  // Navigate to a step; auto-fill "who advances" the first time it's opened empty.
-  const autoFilled = useRef(false);
+  // Navigate to a step; make sure "who advances" is seeded before it's shown.
   const goToStep = (next: Step) => {
-    if (next === "advance" && !readOnly && !autoFilled.current) {
-      const hasAdv = GROUP_LETTERS.some((l) => advancement[l]?.first || advancement[l]?.second);
+    if (next === "advance" && !readOnly && !manualAdv) {
       const hasGroupPicks = Object.values(matchPicks).some((p) => p.pick);
-      if (!hasAdv && hasGroupPicks) {
-        autoFilled.current = true;
-        fillFromGroupPicks();
-      }
+      if (hasGroupPicks) reDerive(matchPicks);
     }
     setStep(next);
   };
