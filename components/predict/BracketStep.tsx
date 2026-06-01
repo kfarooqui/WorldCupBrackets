@@ -58,21 +58,22 @@ export default function BracketStep({
         </div>
       )}
 
-      {/* Full-bleed: break out of the centered page container so the whole tree
-          uses the window width. Centers when it fits; scrolls only if very narrow. */}
+      {/* Full-bleed bracket tree. Every column is the same height (items-stretch)
+          and each match is an equal flex slot, so a later-round match auto-centers
+          vertically between the two matches that feed it. */}
       <div className="relative left-1/2 w-screen -translate-x-1/2 overflow-x-auto px-4 pb-4">
-        <div className="mx-auto flex w-max gap-3">
+        <div className="mx-auto flex w-max items-stretch gap-3">
           {ROUNDS.map((round) => (
-            <div key={round} className="w-[215px] flex-shrink-0">
+            <div key={round} className="flex w-[215px] flex-shrink-0 flex-col">
               <h4 className="mb-2 text-center text-sm font-bold text-[var(--accent)]">
                 {ROUND_TITLE[round]}
               </h4>
-              <div className="space-y-2">
+              <div className="flex flex-1 flex-col">
                 {Array.from({ length: ROUND_SIZE[round] }, (_, slot) => {
                   const [top, bot] = occ[round][slot];
                   const chosen = picks[round]?.[slot] ?? null;
                   return (
-                    <div key={slot}>
+                    <div key={slot} className="flex flex-1 flex-col justify-center py-1">
                       <div className="overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface-2)]">
                         <TeamSlot
                           teamId={top}
