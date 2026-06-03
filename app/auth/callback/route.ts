@@ -14,6 +14,13 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
+      // Bump this user's login counter. Best-effort: never block sign-in if the
+      // RPC is missing (migration not applied) or fails.
+      try {
+        await supabase.rpc("record_sign_in");
+      } catch {
+        // ignore
+      }
       return NextResponse.redirect(`${origin}${next}`);
     }
   }

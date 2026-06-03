@@ -7,19 +7,22 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "seed": "node --env-file=.env.local node_modules/tsx/dist/cli.mjs scripts/seed.ts"
+    "seed": "node --env-file=.env.local node_modules/tsx/dist/cli.mjs scripts/seed.ts",
+    "test-email": "node --env-file=.env.local node_modules/tsx/dist/cli.mjs scripts/test-email.ts",
+    "send-signin-links": "node --env-file=.env.local node_modules/tsx/dist/cli.mjs scripts/send-signin-links.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.106.2",
     "next": "16.2.6",
+    "nodemailer": "^8.0.10",
     "react": "19.2.4",
-    "react-dom": "19.2.4",
-    "resend": "^6.12.4"
+    "react-dom": "19.2.4"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/nodemailer": "^8.0.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",

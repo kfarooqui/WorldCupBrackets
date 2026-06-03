@@ -10,6 +10,7 @@ export type Profile = {
   status: ProfileStatus;
   role: ProfileRole;
   created_at: string;
+  sign_in_count: number;
 };
 
 export type Team = {
