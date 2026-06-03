@@ -8,8 +8,6 @@ import { fixtureLine } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
-const PICK_LABEL: Record<Pick, string> = { HOME: "Home win", DRAW: "Draw", AWAY: "Away win" };
-
 export default async function MatchPage({
   params,
 }: {
@@ -47,6 +45,14 @@ export default async function MatchPage({
   const home = teamsById.get(m.home_team_id ?? -1);
   const away = teamsById.get(m.away_team_id ?? -1);
   const finished = m.status === "finished";
+
+  // Show the predicted team name (or "Draw") rather than home/away terminology.
+  const pickLabel = (pick: Pick): string =>
+    pick === "HOME"
+      ? home?.name ?? "Home"
+      : pick === "AWAY"
+        ? away?.name ?? "Away"
+        : "Draw";
 
   const rows = (preds as MatchPrediction[])
     .filter((p) => profById.has(p.user_id))
@@ -92,7 +98,7 @@ export default async function MatchPage({
             {rows.map(({ p, profile, pts }) => (
               <tr key={p.id} className="border-b border-[var(--border)]/50">
                 <td className="py-2 pr-3 font-medium">{profile.first_name} {profile.last_name}</td>
-                <td className="py-2 pr-3">{PICK_LABEL[p.pick]}</td>
+                <td className="py-2 pr-3">{pickLabel(p.pick)}</td>
                 <td className="py-2 pr-3 text-[var(--muted)]">
                   {p.pred_home_score != null && p.pred_away_score != null
                     ? `${p.pred_home_score}–${p.pred_away_score}`
