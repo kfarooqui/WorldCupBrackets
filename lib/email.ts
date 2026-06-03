@@ -12,11 +12,17 @@ function transport() {
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
   if (!user || !pass) return null;
+  const port = Number(process.env.SMTP_PORT ?? 465);
   return nodemailer.createTransport({
     host: process.env.SMTP_HOST ?? "smtp.gmail.com",
-    port: Number(process.env.SMTP_PORT ?? 465),
-    secure: Number(process.env.SMTP_PORT ?? 465) === 465,
+    port,
+    secure: port === 465,
     auth: { user, pass },
+    // Fail fast — serverless functions have a short max duration, so don't let a
+    // blocked/slow SMTP connection hang until the platform kills the function.
+    connectionTimeout: 8000,
+    greetingTimeout: 8000,
+    socketTimeout: 9000,
   });
 }
 
@@ -63,14 +69,30 @@ export async function sendCustomEmail(opts: {
     </div>`;
   const from = fromAddress();
 
+  // Verify the connection once up front so a blocked/misconfigured SMTP fails
+  // fast with a clear message instead of timing out per-recipient.
+  try {
+    await tx.verify();
+  } catch (e) {
+    return {
+      sent: 0,
+      total: recipients.length,
+      error: `SMTP connection failed: ${e instanceof Error ? e.message : String(e)}`,
+    };
+  }
+
   let sent = 0;
+  let lastError = "";
   for (const to of recipients) {
     try {
       await tx.sendMail({ from, to, subject, html });
       sent++;
-    } catch {
-      // skip failed recipient, keep going
+    } catch (e) {
+      lastError = e instanceof Error ? e.message : String(e);
     }
+  }
+  if (sent === 0 && lastError) {
+    return { sent, total: recipients.length, error: `Send failed: ${lastError}` };
   }
   return { sent, total: recipients.length };
 }
