@@ -5,7 +5,7 @@ import type { Match, Team } from "@/lib/types";
 import { autoFillR32 } from "@/app/actions/results";
 import { sendDigest } from "@/app/actions/email";
 import { ROUND_LABEL } from "@/lib/scoring";
-import { GROUP_LETTERS } from "@/lib/worldcup-data";
+import { fmtDate } from "@/lib/format";
 import ResultRow from "./ResultRow";
 
 const KO_STAGES = ["r32", "r16", "qf", "sf", "final"] as const;
@@ -30,6 +30,25 @@ export default function ResultsManager({
         r.error ? r.error : `Sent ${r.results} result(s) to ${r.sent} player(s).`,
       );
     });
+
+  // Group-stage matches arranged by match day (sorted by date), rather than by
+  // group. match_date is ISO (YYYY-MM-DD), so it sorts chronologically; null
+  // dates sort last. match_no breaks ties within a day.
+  const groupByDate = matches
+    .filter((m) => m.stage === "group")
+    .slice()
+    .sort(
+      (a, b) =>
+        (a.match_date ?? "9999").localeCompare(b.match_date ?? "9999") ||
+        a.match_no - b.match_no,
+    )
+    .reduce<{ date: string | null; items: Match[] }[]>((acc, m) => {
+      const date = m.match_date ?? null;
+      const last = acc[acc.length - 1];
+      if (last && last.date === date) last.items.push(m);
+      else acc.push({ date, items: [m] });
+      return acc;
+    }, []);
 
   return (
     <div>
@@ -60,15 +79,13 @@ export default function ResultsManager({
 
       {tab === "group" ? (
         <div className="space-y-4">
-          {GROUP_LETTERS.map((letter) => (
-            <div key={letter} className="card">
-              <h3 className="mb-2 font-bold">Group {letter}</h3>
+          {groupByDate.map(({ date, items }) => (
+            <div key={date ?? "tbd"} className="card">
+              <h3 className="mb-2 font-bold">{date ? fmtDate(date) : "Date TBD"}</h3>
               <div className="space-y-2">
-                {matches
-                  .filter((m) => m.stage === "group" && m.group_letter === letter)
-                  .map((m) => (
-                    <ResultRow key={m.id} match={m} teams={teams} allowTeamEdit={false} />
-                  ))}
+                {items.map((m) => (
+                  <ResultRow key={m.id} match={m} teams={teams} allowTeamEdit={false} />
+                ))}
               </div>
             </div>
           ))}
