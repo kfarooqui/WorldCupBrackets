@@ -1,8 +1,7 @@
-import Link from "next/link";
 import { requireApproved, predictionsLocked } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Profile, Match, Team, BracketPrediction } from "@/lib/types";
-import { GROUP_LETTERS } from "@/lib/worldcup-data";
+import GroupMatchBrowser from "@/components/GroupMatchBrowser";
 
 export const dynamic = "force-dynamic";
 
@@ -69,34 +68,7 @@ export default async function PicksPage() {
 
       <h2 className="mt-6 mb-3 font-bold">Group matches</h2>
       <p className="mb-3 text-sm text-[var(--muted)]">Tap a match to see everyone&apos;s pick.</p>
-      <div className="space-y-4">
-        {GROUP_LETTERS.map((letter) => (
-          <div key={letter} className="card">
-            <h3 className="mb-2 font-bold">Group {letter}</h3>
-            <div className="grid gap-1 sm:grid-cols-2">
-              {groupMatches
-                .filter((m) => m.group_letter === letter)
-                .map((m) => (
-                  <Link
-                    key={m.id}
-                    href={`/matches/${m.id}`}
-                    className="flex items-center justify-between rounded-lg bg-[var(--surface-2)] px-3 py-2 text-sm hover:bg-[var(--border)]"
-                  >
-                    <span>
-                      {teamsById.get(m.home_team_id ?? -1)?.flag_emoji}{" "}
-                      {teamsById.get(m.home_team_id ?? -1)?.name} v{" "}
-                      {teamsById.get(m.away_team_id ?? -1)?.name}{" "}
-                      {teamsById.get(m.away_team_id ?? -1)?.flag_emoji}
-                    </span>
-                    <span className="text-[var(--muted)]">
-                      {m.status === "finished" ? `${m.home_score}–${m.away_score}` : "→"}
-                    </span>
-                  </Link>
-                ))}
-            </div>
-          </div>
-        ))}
-      </div>
+      <GroupMatchBrowser matches={groupMatches} teams={(teams as Team[]) ?? []} />
     </div>
   );
 }
