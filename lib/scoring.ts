@@ -9,13 +9,13 @@ export const SCORING = {
   groupExactScore: 1,
   /** Qualifying for the Round of 32 is decided by the group stage (no extra pts). */
   reachR32: 0,
-  /** 2 pts for each correct winner pick in the elimination rounds (flat). */
+  /** Escalating pts for each correct winner pick — deeper rounds are worth more. */
   reachR16: 2,
-  reachQF: 2,
-  reachSF: 2,
-  reachFinal: 2,
+  reachQF: 3,
+  reachSF: 4,
+  reachFinal: 5,
   /** Correctly predicting the champion (the Final winner). */
-  champion: 2,
+  champion: 6,
 } as const;
 
 export type KnockoutRound = "r32" | "r16" | "qf" | "sf" | "final";

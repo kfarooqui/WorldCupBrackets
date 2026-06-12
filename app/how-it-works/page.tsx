@@ -94,8 +94,10 @@ export default async function HowItWorksPage() {
             <span className="font-bold text-[var(--accent)]">+{SCORING.groupExactScore} pt</span>
           </li>
           <li className="flex justify-between gap-3 border-b border-[var(--border)] pb-2">
-            <span>Each correct winner in an elimination match (Round of 32 → Final)</span>
-            <span className="font-bold text-[var(--accent)]">{SCORING.reachR16} pts</span>
+            <span>Each correct winner in an elimination round (R16 → Final)</span>
+            <span className="font-bold text-[var(--accent)]">
+              {SCORING.reachR16}–{SCORING.reachFinal} pts
+            </span>
           </li>
           <li className="flex justify-between gap-3">
             <span>Correctly picking the champion</span>
@@ -103,9 +105,11 @@ export default async function HowItWorksPage() {
           </li>
         </ul>
         <p className="text-xs text-[var(--muted)]">
-          So a perfect group stage is worth a lot of small points; the knockout rounds each
-          reward 2 points for every team you correctly send through. A knockout pick counts
-          as correct if the team you advanced actually wins its real match that round.
+          A perfect group stage is worth a lot of small points; the knockout rounds reward more
+          the deeper they go — {SCORING.reachR16} pts for the Round of 16, {SCORING.reachQF} for
+          the quarterfinals, {SCORING.reachSF} for the semifinals, and {SCORING.reachFinal} for the
+          final — for every team you correctly send through. A knockout pick counts as correct if
+          the team you advanced actually reaches that round.
         </p>
       </section>
 
