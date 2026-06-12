@@ -27,12 +27,13 @@ export default async function PicksPage() {
   }
 
   const db = createAdminClient();
-  const [{ data: profiles }, { data: matches }, { data: teams }, { data: champPicks }] =
+  const [{ data: profiles }, { data: matches }, { data: teams }, { data: champPicks }, { data: subs }] =
     await Promise.all([
       db.from("profiles").select("*").eq("status", "approved").order("first_name"),
       db.from("matches").select("*").eq("stage", "group").order("match_no"),
       db.from("teams").select("*"),
       db.from("bracket_predictions").select("*").eq("round", "final"),
+      db.from("prediction_submissions").select("user_id"),
     ]);
 
   const teamsById = new Map((teams as Team[]).map((t) => [t.id, t]));
@@ -41,6 +42,10 @@ export default async function PicksPage() {
   );
   const groupMatches = (matches as Match[]) ?? [];
 
+  // Only show players who formally submitted their picks.
+  const submitted = new Set((subs ?? []).map((s) => s.user_id));
+  const players = ((profiles as Profile[]) ?? []).filter((p) => submitted.has(p.id));
+
   return (
     <div>
       <h1 className="text-2xl font-bold">Everyone&apos;s picks</h1>
@@ -48,7 +53,7 @@ export default async function PicksPage() {
       <div className="card mt-4">
         <h2 className="mb-3 font-bold">🏆 Predicted champions</h2>
         <div className="grid gap-2 sm:grid-cols-2">
-          {(profiles as Profile[]).map((p) => {
+          {players.map((p) => {
             const champ = champByUser.get(p.id);
             return (
               <div key={p.id} className="flex justify-between rounded-lg bg-[var(--surface-2)] px-3 py-2 text-sm">

@@ -34,14 +34,19 @@ export default async function MatchPage({
     );
   }
 
-  const [{ data: teams }, { data: profiles }, { data: preds }] = await Promise.all([
+  const [{ data: teams }, { data: profiles }, { data: preds }, { data: subs }] = await Promise.all([
     db.from("teams").select("*"),
     db.from("profiles").select("*").eq("status", "approved"),
     db.from("match_predictions").select("*").eq("match_id", matchId),
+    db.from("prediction_submissions").select("user_id"),
   ]);
 
   const teamsById = new Map((teams as Team[]).map((t) => [t.id, t]));
-  const profById = new Map((profiles as Profile[]).map((p) => [p.id, p]));
+  // Only players who formally submitted appear in the per-match picks table.
+  const submitted = new Set((subs ?? []).map((s) => s.user_id));
+  const profById = new Map(
+    (profiles as Profile[]).filter((p) => submitted.has(p.id)).map((p) => [p.id, p]),
+  );
   const home = teamsById.get(m.home_team_id ?? -1);
   const away = teamsById.get(m.away_team_id ?? -1);
   const finished = m.status === "finished";

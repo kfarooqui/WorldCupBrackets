@@ -71,11 +71,13 @@ export async function getLeaderboard(): Promise<{
     return { profile, score: scoreUser(pred, reality), submitted: submittedSet.has(profile.id) };
   });
 
-  scored.sort((a, b) => b.score.total - a.score.total);
+  // Only players who formally submitted appear on the board.
+  const ranked = scored.filter((s) => s.submitted);
+  ranked.sort((a, b) => b.score.total - a.score.total);
 
   let rank = 0;
   let prev = Number.NaN;
-  const rows: LeaderboardRow[] = scored.map((s, i) => {
+  const rows: LeaderboardRow[] = ranked.map((s, i) => {
     if (s.score.total !== prev) {
       rank = i + 1;
       prev = s.score.total;
