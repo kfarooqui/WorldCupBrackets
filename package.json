@@ -9,9 +9,11 @@
     "lint": "eslint",
     "seed": "node --env-file=.env.local node_modules/tsx/dist/cli.mjs scripts/seed.ts",
     "test-email": "node --env-file=.env.local node_modules/tsx/dist/cli.mjs scripts/test-email.ts",
+    "preview-digest": "node --env-file=.env.local node_modules/tsx/dist/cli.mjs scripts/preview-digest.ts",
     "send-signin-links": "node --env-file=.env.local node_modules/tsx/dist/cli.mjs scripts/send-signin-links.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.104.1",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.106.2",
     "next": "16.2.6",
