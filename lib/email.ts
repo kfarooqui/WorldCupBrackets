@@ -2,7 +2,20 @@ import nodemailer from "nodemailer";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Match, Team, Profile } from "@/lib/types";
 
-const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+/**
+ * Canonical site URL for links inside emails. Emails go to real users, so this
+ * must never be localhost — even when a send is triggered from a local dev
+ * server. Prefer EMAIL_SITE_URL, then a non-localhost NEXT_PUBLIC_SITE_URL,
+ * then the Vercel production domain.
+ */
+function emailSite(): string {
+  for (const c of [process.env.EMAIL_SITE_URL, process.env.NEXT_PUBLIC_SITE_URL]) {
+    if (c && !c.includes("localhost")) return c.replace(/\/+$/, "");
+  }
+  const vercel = process.env.VERCEL_PROJECT_PRODUCTION_URL;
+  if (vercel) return `https://${vercel}`;
+  return "http://localhost:3000";
+}
 
 /**
  * Build a Gmail (or any SMTP) transport from env. Returns null if SMTP isn't
@@ -107,6 +120,7 @@ export async function sendApprovalEmail(profile: Profile): Promise<boolean> {
   if (!tx || !profile.email) return false;
 
   const name = profile.first_name || "there";
+  const SITE = emailSite();
   const html = `
     <div style="font-family:system-ui,sans-serif;max-width:560px;margin:auto">
       <h2>⚽ You're in!</h2>
@@ -161,6 +175,7 @@ export async function sendMatchDayDigest(): Promise<{
 
   const teamMap = new Map((teams as Team[]).map((t) => [t.id, t]));
   const lines = (matches as Match[]).map((m) => `<li>${resultLine(m, teamMap)}</li>`).join("");
+  const SITE = emailSite();
   const html = `
     <div style="font-family:system-ui,sans-serif;max-width:560px;margin:auto">
       <h2>⚽ World Cup 2026 — latest results</h2>
