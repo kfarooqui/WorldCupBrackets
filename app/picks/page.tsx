@@ -67,7 +67,10 @@ export default async function PicksPage() {
       </div>
 
       <h2 className="mt-6 mb-3 font-bold">Group matches</h2>
-      <p className="mb-3 text-sm text-[var(--muted)]">Tap a match to see everyone&apos;s pick.</p>
+      <p className="mb-3 text-sm text-[var(--muted)]">
+        Tap a match to see everyone&apos;s pick.{" "}
+        <span className="text-base font-bold">LOOK HERE NADIRA!</span>
+      </p>
       <GroupMatchBrowser matches={groupMatches} teams={(teams as Team[]) ?? []} />
     </div>
   );
