@@ -18,13 +18,13 @@ export default function KnockoutPreviewPage() {
           “played” (✓ reached / ✗ out); the Final &amp; Champion are still
           “predictions only.” See the match-by-match version on the{" "}
           <a className="underline" href="/picks/knockout-results">
-            Results
+            Knockout Results
           </a>{" "}
           page.
         </p>
       </div>
 
-      <h1 className="text-2xl font-bold">Everyone&apos;s picks — Knockouts</h1>
+      <h1 className="text-2xl font-bold">Bracket Picks</h1>
       <p className="mt-1 mb-4 text-sm text-[var(--muted)]">
         Who did everyone send to each round? Tap a team to see the believers.
       </p>

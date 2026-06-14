@@ -47,7 +47,8 @@ export default async function PicksPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold">Everyone&apos;s picks</h1>
+      <h1 className="text-2xl font-bold">Group Picks</h1>
+      <p className="mt-1 text-sm text-[var(--muted)]">Everyone&apos;s group-stage predictions.</p>
 
       <div className="card mt-4">
         <h2 className="mb-3 font-bold">🏆 Predicted champions</h2>

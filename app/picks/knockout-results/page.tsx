@@ -16,13 +16,13 @@ export default function KnockoutResultsPage() {
           “played”; the Semifinals onward aren&apos;t. See the round-by-round
           version on the{" "}
           <a className="underline" href="/picks/knockout-preview">
-            Knockouts
+            Bracket Picks
           </a>{" "}
           page.
         </p>
       </div>
 
-      <h1 className="text-2xl font-bold">Knockout results</h1>
+      <h1 className="text-2xl font-bold">Knockout Results</h1>
       <p className="mt-1 mb-4 text-sm text-[var(--muted)]">
         As each match is decided, whoever picked the winner to advance scores —
         whoever picked the loser is knocked out.
