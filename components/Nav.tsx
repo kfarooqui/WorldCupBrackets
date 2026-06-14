@@ -28,6 +28,9 @@ export default async function Nav() {
               <Link href="/picks" className="hover:text-[var(--accent)]">
                 Everyone
               </Link>
+              <Link href="/picks/knockout-preview" className="hover:text-[var(--accent)]">
+                Knockouts
+              </Link>
             </>
           )}
           {profile?.role === "admin" && (
