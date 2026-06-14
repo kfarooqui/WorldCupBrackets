@@ -71,7 +71,7 @@ export default async function MatchPage({
 
   return (
     <div>
-      <Link href="/picks" className="text-sm text-[var(--muted)] hover:underline">← All games</Link>
+      <Link href="/picks/everyone" className="text-sm text-[var(--muted)] hover:underline">← Everyone&apos;s picks</Link>
       <div className="card mt-3 text-center">
         <div className="text-sm text-[var(--muted)]">{m.slot_label}</div>
         <div className="mt-1 text-xl font-bold">
