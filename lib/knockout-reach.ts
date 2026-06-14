@@ -1,6 +1,6 @@
-import type { Team, BracketPrediction, AdvancementPrediction } from "@/lib/types";
+import type { Team, Match, BracketPrediction, AdvancementPrediction } from "@/lib/types";
 import type { Round } from "@/lib/bracket";
-import { SCORING } from "@/lib/scoring";
+import { SCORING, ROUND_LABEL, reachPoints, type KnockoutRound } from "@/lib/scoring";
 
 /**
  * The "everyone" knockout view is organised by REACH rungs, not by matchup,
@@ -137,5 +137,123 @@ export function computeReachTallies(
       .sort((a, b) => b.count - a.count || a.team.name.localeCompare(b.team.name));
 
     return { key, label, short, points, resolved, teams };
+  });
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * Match-by-match results — complementary to the reach tally above. For each
+ * knockout fixture, show who predicted the WINNER to advance (they score) and
+ * who predicted the loser (now eliminated, 0 from this pick).
+ * ────────────────────────────────────────────────────────────────────────── */
+
+const KO_STAGES: KnockoutRound[] = ["r32", "r16", "qf", "sf", "final"];
+
+/** The round a winner of `stage` reaches next (null = champion, no further round). */
+const NEXT_ROUND: Record<KnockoutRound, KnockoutRound | null> = {
+  r32: "r16",
+  r16: "qf",
+  qf: "sf",
+  sf: "final",
+  final: null,
+};
+
+export type SideOutcome = {
+  team: Team | null;
+  /** Players who predicted this team to win this round (reach the next one). */
+  believers: Picker[];
+};
+
+export type MatchOutcome = {
+  matchId: number;
+  matchNo: number;
+  finished: boolean;
+  score: string | null;
+  /** What a correct pick here earns, and what advancing means. */
+  points: number;
+  reachedLabel: string; // "Round of 16", … or "Champion" for the Final
+  winner: SideOutcome | null; // null until the match is finished
+  loser: SideOutcome | null;
+  /** Both sides before the match is played (so we can still show the fixture). */
+  home: SideOutcome;
+  away: SideOutcome;
+};
+
+export type ResultsRound = {
+  key: KnockoutRound;
+  label: string;
+  matches: MatchOutcome[];
+};
+
+/** Players who predicted `teamId` to win `round` (i.e. reach the next round). */
+function believersFor(
+  players: PlayerPredictions[],
+  round: KnockoutRound,
+  teamId: number | null,
+): Picker[] {
+  if (teamId == null) return [];
+  const out: Picker[] = [];
+  for (const p of players) {
+    if (p.bracket.some((b) => b.round === round && b.team_id === teamId)) {
+      out.push({ userId: p.userId, name: p.name });
+    }
+  }
+  return out;
+}
+
+/**
+ * Build the per-round, per-match results view. Pure — no DB. `matches` is the
+ * full match list; only knockout stages are used.
+ */
+export function computeKnockoutResults(
+  matches: Match[],
+  players: PlayerPredictions[],
+  teamsById: Map<number, Team>,
+): ResultsRound[] {
+  return KO_STAGES.map((stage) => {
+    const next = NEXT_ROUND[stage];
+    const points = next ? reachPoints(next) : SCORING.champion;
+    const reachedLabel = next ? ROUND_LABEL[next] : "Champion";
+
+    const ms = matches
+      .filter((m) => m.stage === stage)
+      .sort((a, b) => a.match_no - b.match_no)
+      .map((m): MatchOutcome => {
+        const home = m.home_team_id != null ? teamsById.get(m.home_team_id) ?? null : null;
+        const away = m.away_team_id != null ? teamsById.get(m.away_team_id) ?? null : null;
+        const finished =
+          m.status === "finished" && m.home_score != null && m.away_score != null;
+
+        const homeSide: SideOutcome = {
+          team: home,
+          believers: believersFor(players, stage, m.home_team_id),
+        };
+        const awaySide: SideOutcome = {
+          team: away,
+          believers: believersFor(players, stage, m.away_team_id),
+        };
+
+        let winner: SideOutcome | null = null;
+        let loser: SideOutcome | null = null;
+        if (finished) {
+          const homeWon = m.home_score! >= m.away_score!;
+          winner = homeWon ? homeSide : awaySide;
+          loser = homeWon ? awaySide : homeSide;
+        }
+
+        return {
+          matchId: m.id,
+          matchNo: m.match_no,
+          finished,
+          score: finished ? `${m.home_score}–${m.away_score}` : null,
+          points,
+          reachedLabel,
+          winner,
+          loser,
+          home: homeSide,
+          away: awaySide,
+        };
+      });
+
+    return { key: stage, label: ROUND_LABEL[stage], matches: ms };
   });
 }
