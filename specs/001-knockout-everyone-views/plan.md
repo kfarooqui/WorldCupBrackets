@@ -1,24 +1,33 @@
-# Implementation Plan: Knockout "Everyone" Views — Real Data
+# Implementation Plan: Everyone's Picks Page — Real Data
 
 **Branch**: `spec-kit-trial` | **Date**: 2026-06-14 | **Spec**: [spec.md](./spec.md)
 
 **Input**: Feature specification from `specs/001-knockout-everyone-views/spec.md`
 
+> **Amendment (2026-06-14, post-implementation)**: Consolidated to a single **"Everyone's
+> Picks"** page with **four tabs** (Predicted champion, Group picks, Bracket picks, Knockout
+> stage results), folding in and removing the standalone `/picks` page. Pre-lock behavior is a
+> **full hidden-until-lock block** (not own-picks+notice); "who counts" = **submitted players**.
+> File names shipped as `lib/everyone-picks.ts` (`getEveryonePicksData`) and
+> `components/EveryonePicksTabs.tsx`. Sections below reflect the shipped design.
+
 ## Summary
 
-Turn the two fake-data knockout preview pages into one permanent, data-backed "Everyone"
-destination with two tabs (Bracket Picks / Knockout Results). The existing pure compute
-libraries (`computeReachTallies`, `computeKnockoutResults`, `deriveReality`) are kept
-unchanged; only the data source changes from `lib/knockout-fake.ts` to real Supabase rows.
+Replace the fake-data knockout preview pages AND the standalone "Group Picks" page with one
+permanent, data-backed **"Everyone's Picks"** destination with four tabs: Predicted champion,
+Group picks, Bracket picks (reach), Knockout stage results. The existing pure compute
+libraries (`computeReachTallies`, `computeKnockoutResults`, `deriveReality`) and browser
+components (reach/results/group-match) are kept unchanged; only data sourcing and page
+organization change.
 
-Technical approach: add one server-side data-access function (`lib/knockout-everyone.ts`)
-that mirrors `lib/leaderboard.ts` but uses the **user-scoped** Supabase server client so
-Row Level Security enforces the reveal rule for free — before lock only the signed-in
-player's prediction rows are returned, after lock everyone's are. A single server page
-(`app/picks/everyone/page.tsx`) calls `requireApproved()`, fetches data, computes both
-views, and renders a client tab wrapper. Pre-lock the page shows only the viewer's own
-picks plus a reveal-after-deadline notice. The fake dataset and the two preview routes are
-removed.
+Technical approach: add one server-side data-access function (`lib/everyone-picks.ts`,
+`getEveryonePicksData`) that reads through the **user-scoped** Supabase server client (RLS as
+the privacy backstop) and returns champions + group matches + reach/results, scoped to
+players who formally submitted. A single server page (`app/picks/everyone/page.tsx`) calls
+`requireApproved()`; before lock it renders a full hidden-until-lock block and fetches
+nothing; after lock it fetches data and renders the client tab wrapper
+(`components/EveryonePicksTabs.tsx`, default tab Group picks). The fake dataset, the two
+preview routes, and the standalone `/picks` page are removed; lingering links repointed.
 
 ## Technical Context
 
@@ -66,13 +75,15 @@ complete/incomplete predictions (FR-009, FR-010).
   deliberately NOT used here (unlike the aggregate-only leaderboard), because this view
   exposes individual picks. No secrets reach the client; the page is gated by
   `requireApproved()`.
-- **IV. Game Integrity & Fairness** — PASS. Pick privacy until lock is enforced at the DB
-  layer (existing `predictions_locked()` RLS policy), not merely in the UI. No scoring or
-  locking logic is added or changed, so the "tests required" trigger does not fire; the
-  reveal boundary is covered by quickstart validation (SC-002).
+- **IV. Game Integrity & Fairness** — PASS. Pick privacy until lock is enforced two ways:
+  the page renders a full hidden-until-lock block (no data fetched pre-lock), backed by the
+  existing `predictions_locked()` RLS policy at the DB layer. No scoring or locking logic is
+  added or changed, so the "tests required" trigger does not fire; the reveal boundary is
+  covered by quickstart validation (SC-002).
 - **V. Right-Sized Simplicity** — PASS. No new dependencies, no new tables, no new
-  abstractions. Reuses existing pure compute functions and the established page/data-access
-  pattern; net deletes code (removes `knockout-fake.ts` and two routes).
+  abstractions. Reuses existing pure compute functions and browser components and the
+  established page/data-access pattern; net deletes code (removes `knockout-fake.ts`, the two
+  preview routes, and the standalone `/picks` page).
 
 **Result**: All gates pass. No entries required in Complexity Tracking.
 
@@ -98,26 +109,31 @@ specs/001-knockout-everyone-views/
 ```text
 app/
 ├── picks/
-│   └── everyone/
-│       └── page.tsx            # NEW: server page — requireApproved, fetch, compute, render tabs
+│   ├── everyone/
+│   │   └── page.tsx            # NEW: server page — requireApproved, hidden-until-lock, fetch, render tabs
+│   ├── page.tsx                # REMOVE (standalone "Group Picks" page, folded into Everyone's Picks)
 │   ├── knockout-preview/       # REMOVE (folder + page.tsx)
 │   └── knockout-results/       # REMOVE (folder + page.tsx)
+├── page.tsx                    # EDIT: home "Everyone's picks" card → /picks/everyone
+└── matches/[id]/page.tsx       # EDIT: back-link → /picks/everyone
 components/
-├── EveryoneTabs.tsx            # NEW: client wrapper — Bracket Picks / Knockout Results tabs
+├── EveryonePicksTabs.tsx       # NEW: client wrapper — 4 tabs incl. inline champion list
 ├── KnockoutReachBrowser.tsx    # REUSE unchanged (meId now real)
-└── KnockoutResultsBrowser.tsx  # REUSE unchanged (meId now real)
+├── KnockoutResultsBrowser.tsx  # REUSE unchanged (meId now real)
+├── GroupMatchBrowser.tsx       # REUSE; default sort changed to by-date
+└── Nav.tsx                     # EDIT: drop "Group Picks" link, rename to "Everyone's Picks"
 lib/
-├── knockout-everyone.ts        # NEW: data-access — build PlayerPredictions[] + teams + reality from Supabase
+├── everyone-picks.ts           # NEW: data-access — champions + group + reach/results (submitted-only)
 ├── knockout-reach.ts           # REUSE unchanged (compute functions)
 ├── score-engine.ts             # REUSE unchanged (deriveReality)
 └── knockout-fake.ts            # REMOVE
-components/Nav.tsx              # EDIT: replace two preview links with one "Everyone" link
 ```
 
 **Structure Decision**: Single Next.js project (App Router). The feature adds one route,
-one data-access lib, and one client tab wrapper; reuses the two existing browser components
-and all compute libs; deletes the fake dataset and the two preview routes. Mirrors the
-existing `app/leaderboard/page.tsx` + `lib/leaderboard.ts` separation of concerns.
+one data-access lib, and one 4-tab client wrapper; reuses the three existing browser
+components and all compute libs; deletes the fake dataset, the two preview routes, and the
+standalone `/picks` page. Mirrors the existing `app/leaderboard/page.tsx` + `lib/leaderboard.ts`
+separation of concerns.
 
 ## Complexity Tracking
 

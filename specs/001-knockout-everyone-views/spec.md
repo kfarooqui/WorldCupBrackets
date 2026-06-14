@@ -1,12 +1,21 @@
-# Feature Specification: Knockout "Everyone" Views — Real Data
+# Feature Specification: Everyone's Picks Page — Real Data
 
 **Feature Branch**: `spec-kit-trial`
 
 **Created**: 2026-06-14
 
-**Status**: Draft
+**Status**: Implemented
 
 **Input**: User description: "Replace the fake/preview data behind the two knockout 'everyone' pages with real data from Supabase, turning them into permanent, data-backed pages."
+
+> **Amendment (2026-06-14, post-implementation)**: After the initial two-tab build, the
+> page was consolidated into a single **"Everyone's Picks"** destination with **four tabs**
+> — Predicted champion, Group picks, Bracket picks, Knockout stage results — by folding in
+> the former standalone "Group Picks" page (`/picks`), which was then removed. The pre-lock
+> behavior was changed from "show your own picks + notice" to a **full hidden-until-lock
+> block** for the whole page. "Who counts" is now **players who formally submitted** (matching
+> the leaderboard) across all tabs. The page opens on the Group picks tab with the group
+> matches sorted by date. This spec body has been updated to reflect the shipped design.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -44,17 +53,17 @@ After predictions lock, an approved player opens the "Knockout Results" view to 
 
 ### User Story 3 - Picks stay private until the deadline (Priority: P1)
 
-Before the prediction lock deadline, no player can use these "everyone" views to see another player's picks. The reveal happens only once predictions lock.
+Before the prediction lock deadline, no player can use the Everyone's Picks page to see another player's picks. The entire page is replaced by a "picks are hidden until <lock time>" block, and the reveal happens only once predictions lock.
 
-**Why this priority**: This is a non-negotiable fairness guarantee (project constitution Principle IV — Game Integrity & Fairness). Shipping the everyone-views without this protection would let players copy or counter each other's brackets, invalidating the competition. It is as critical as US1.
+**Why this priority**: This is a non-negotiable fairness guarantee (project constitution Principle IV — Game Integrity & Fairness). Shipping the page without this protection would let players copy or counter each other's picks, invalidating the competition. It is as critical as US1.
 
-**Independent Test**: While the lock deadline is still in the future, attempt to view the everyone-pages as an approved player and confirm no other player's picks are exposed; then move past the lock deadline and confirm the views populate.
+**Independent Test**: While the lock deadline is still in the future, open the Everyone's Picks page as an approved player and confirm the hidden-until-lock block is shown and no picks (own or others') are listed; then move past the lock deadline and confirm the tabs populate.
 
 **Acceptance Scenarios**:
 
-1. **Given** predictions are not yet locked, **When** an approved player opens an everyone-view, **Then** they do not see any other player's picks.
-2. **Given** predictions are not yet locked, **When** the player is on an everyone-view, **Then** they are told the group's picks reveal after the deadline.
-3. **Given** the lock deadline has passed, **When** an approved player opens an everyone-view, **Then** all approved players' picks are visible per US1 and US2.
+1. **Given** predictions are not yet locked, **When** an approved player opens the Everyone's Picks page, **Then** the whole page shows a "hidden until lock" block and no player's picks (including their own) are listed.
+2. **Given** predictions are not yet locked, **When** the player is on the page, **Then** they are told the picks reveal after the deadline (with the lock time shown).
+3. **Given** the lock deadline has passed, **When** an approved player opens the page, **Then** all submitted players' picks are visible across all four tabs.
 
 ---
 
@@ -82,8 +91,12 @@ Before the prediction lock deadline, no player can use these "everyone" views to
 - **FR-009**: The system MUST gracefully handle incomplete tournament state: rounds not yet played, matches without entered results, and match slots whose teams are not yet determined — without inventing outcomes.
 - **FR-010**: The system MUST gracefully handle incomplete player predictions, counting each player only for the picks they actually submitted.
 - **FR-011**: The system MUST remove the "Preview — fake data" framing and MUST NOT depend on the fabricated sample dataset; the fabricated dataset and its sole-purpose preview scaffolding MUST be retired once the real views are in place.
-- **FR-012**: Both views MUST live on a single permanent "Everyone" destination reachable from the app's navigation, with an in-page toggle (tabs) between the reach view and the results view. The temporary preview route names MUST be retired in favor of this destination.
-- **FR-013**: Before the lock deadline, the "Everyone" destination MUST remain reachable but MUST show only the signed-in player's own picks, accompanied by a clear notice that the group's picks reveal after the deadline. No other player's picks may appear pre-lock.
+- **FR-012**: All everyone-facing pick views MUST live on a single permanent "Everyone's Picks" destination reachable from the app's navigation, with four in-page tabs: Predicted champion, Group picks, Bracket picks (reach), and Knockout stage results. The temporary preview routes AND the former standalone "Group Picks" page (`/picks`) MUST be retired in favor of this destination; lingering links to the removed routes MUST be repointed here.
+- **FR-013**: Before the lock deadline, the Everyone's Picks page MUST replace its entire content with a "picks are hidden until <lock time>" block — no picks (own or others') are shown until predictions lock.
+- **FR-014**: The "Predicted champion" tab MUST list each submitted player alongside the team they predicted as champion (or a placeholder when none), with the signed-in player marked "you".
+- **FR-015**: The "Group picks" tab MUST present the group-stage matches as a browsable list (selectable to view everyone's pick per match), defaulting to a by-date sort.
+- **FR-016**: Across all tabs, the set of players shown MUST be those who formally submitted their predictions (consistent with the leaderboard); non-submitters do not appear.
+- **FR-017**: The page MUST open on the "Group picks" tab by default.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -91,24 +104,27 @@ Before the prediction lock deadline, no player can use these "everyone" views to
 - **Team**: A tournament team (name, code, flag, group) that can be picked to advance.
 - **Knockout Match**: A bracket fixture at a stage (R32, R16, QF, SF, Final) with optional assigned teams, optional entered result (scores/winner), and scheduling info; may be pending if teams or result are not yet known.
 - **Knockout Prediction (per player)**: A player's group-advancement picks, third-place picks, and bracket picks (which team they sent to each round) — the basis for all tallies and per-match scoring.
-- **Reveal Deadline**: The single pool-wide lock instant after which all players' picks become visible to all approved players.
+- **Group Match**: A group-stage fixture, browsable on the Group picks tab (its per-match pick breakdown lives on the match detail page).
+- **Predicted Champion**: Derived from each player's Final-round bracket pick — the team they expect to win the tournament.
+- **Submission**: A flag marking that a player formally submitted their predictions; only submitted players appear in any tab.
+- **Reveal Deadline**: The single pool-wide lock instant; before it the page is fully hidden, after it all submitted players' picks become visible to all approved players.
 
 ## Success Criteria *(mandatory)*
 
 ### Measurable Outcomes
 
-- **SC-001**: 100% of the tallies and player lists shown in both views are derived from real submitted predictions and entered results — zero values come from the fabricated sample dataset.
-- **SC-002**: Before the lock deadline, 0 other-player picks are viewable through these pages by any account.
-- **SC-003**: After the lock deadline, an approved player can open either view and, within one page load and no extra steps, see the whole pool's picks for every round/match that has data.
-- **SC-004**: With a realistic pool size (up to ~50 approved players), both views load and respond to a team/match tap without noticeable delay (sub-second perceived response).
-- **SC-005**: For any mix of played/unplayed rounds and complete/incomplete predictions, both views render with no errors and no fabricated outcomes (verified across the edge cases listed above).
+- **SC-001**: 100% of the tallies and player lists shown across all four tabs are derived from real submitted predictions and entered results — zero values come from the fabricated sample dataset.
+- **SC-002**: Before the lock deadline, 0 picks (own or others') are viewable through this page by any account.
+- **SC-003**: After the lock deadline, an approved player can open the page and, within one page load, browse all four tabs to see every submitted player's picks for any round/match that has data.
+- **SC-004**: With a realistic pool size (up to ~50 approved players), the page and each tab respond without noticeable delay (sub-second perceived response).
+- **SC-005**: For any mix of played/unplayed rounds and complete/incomplete predictions, every tab renders with no errors and no fabricated outcomes (verified across the edge cases listed above).
 - **SC-006**: After this feature ships, the fabricated sample dataset and preview-only scaffolding no longer exist in the codebase.
 
 ## Assumptions
 
-- The data-access pattern mirrors the existing leaderboard page: a server-rendered page that requires an approved user and reads from the shared database, reusing the already-built reach/results computation logic unchanged.
+- The data-access function is server-rendered behind `requireApproved()` and reads from the shared database via the user-scoped (RLS-respecting) client, reusing the already-built reach/results computation logic unchanged.
 - The reveal rule reuses the pool's existing single lock deadline; per-player or per-section reveal timing is out of scope.
-- The existing access enforcement (other players' picks are readable only after lock) remains the source of truth for privacy; this feature relies on it rather than introducing a separate rule.
-- Visual layout and interaction of the two views are inherited from the current preview components; this feature changes the data source, not the presentation, beyond removing the preview banners and combining the two views under one tabbed "Everyone" destination.
+- Database RLS (own rows always, all approved rows after lock) remains the backstop for privacy; the page additionally enforces a full hidden-until-lock block so nothing is fetched or shown pre-lock.
+- Visual layout and interaction of the tabs are inherited from the existing browser components (reach, results, group-match) and the champion list; this feature changes data sourcing and page organization, not the underlying presentation.
 - Scoring/points definitions are unchanged; this feature only displays who picked what and who advanced, not new scoring rules.
-- Third-place and group-advancement picks are read for completeness of each player's knockout predictions; the two views' presentation remains as in the current components.
+- The Group picks tab links to the existing per-match detail page for each match's pick breakdown rather than embedding it inline.

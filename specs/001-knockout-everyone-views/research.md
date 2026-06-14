@@ -1,9 +1,14 @@
-# Phase 0 Research: Knockout "Everyone" Views — Real Data
+# Phase 0 Research: Everyone's Picks Page — Real Data
 
-All open questions from the spec were resolved during `/speckit-specify` clarification
-(tabbed single page; pre-lock shows only own picks + notice). The remaining research below
-records the technical decisions that turn that into a buildable design, grounded in the
-actual codebase rather than assumed APIs (Constitution Principle II).
+All open questions from the spec were resolved during `/speckit-specify` clarification. The
+research below records the technical decisions that turn that into a buildable design,
+grounded in the actual codebase rather than assumed APIs (Constitution Principle II).
+
+> **Amendment (2026-06-14, post-implementation)**: Decisions 4 and 5 were superseded during
+> implementation: pre-lock is now a **full hidden-until-lock block** (not own-picks+notice),
+> and the page consolidated to **four tabs** on a single "Everyone's Picks" page, absorbing
+> and removing the standalone `/picks` page. Decision 1 (user-scoped client) still holds — it
+> is now the privacy backstop beneath the hidden-block gate. Updated text inline below.
 
 ## Decision 1 — Use the user-scoped Supabase client, not the admin client
 
@@ -47,34 +52,40 @@ state. Group prediction rows by `user_id`, join names from `profiles`, build a
 **Rationale**: Fixed small number of queries regardless of player count → meets the
 sub-second goal at ~50 players (SC-004). No per-player round-trips.
 
-**Note on RLS + grouping**: Because prediction rows are pre-filtered by RLS, pre-lock the
-grouped map naturally contains only the viewer; a player with no visible prediction rows
-simply does not appear (covers the partial/empty-prediction edge cases FR-010 without
-special handling).
+**Note on RLS + grouping**: The data function only runs post-lock (the page shows a hidden
+block otherwise), so RLS returns all approved players' rows; results are then scoped to
+players who formally submitted. A submitted player with no rows for a given pick simply does
+not appear there (covers the partial/empty-prediction edge cases without special handling).
+RLS remains the DB-layer backstop should the function ever be reached pre-lock.
 
-## Decision 4 — Lock state drives framing, not data
+## Decision 4 — Lock state gates the whole page (full hidden block) [AMENDED]
 
-**Decision**: Call the existing `predictionsLocked()` (lib/auth.ts) to decide whether to
-render the "everyone's picks reveal after the deadline" notice and the "only you" framing.
-The picks themselves are already correct from RLS regardless.
+**Decision**: Call the existing `predictionsLocked()` (lib/auth.ts) at the top of the page.
+When not locked, render a full "picks are hidden until <lock time>" block and fetch no pick
+data at all. When locked, fetch and render the tabs. (Originally this drove only an
+own-picks + notice framing; changed to a whole-page block per the user's choice.)
 
-**Rationale**: Keeps a single source of truth for the lock instant (`app_settings.lock_at`)
-and avoids duplicating the comparison. The notice is purely presentational.
+**Rationale**: Strongest, simplest privacy posture — nothing is even queried before lock,
+with RLS (Decision 1) as the DB-layer backstop. Single source of truth for the lock instant
+(`app_settings.lock_at`). Matches the former Group Picks page's pre-lock behavior.
 
-## Decision 5 — One page, two tabs
+## Decision 5 — One page, four tabs (absorbing the standalone Group Picks page) [AMENDED]
 
-**Decision**: New route `app/picks/everyone/page.tsx` (server component) computes both
-`rungs` and `rounds`, then renders a new client component `EveryoneTabs` that toggles
-between the unchanged `KnockoutReachBrowser` and `KnockoutResultsBrowser`. Replace the two
-Nav links with a single "Everyone" link. Delete the two preview routes and
-`lib/knockout-fake.ts`.
+**Decision**: Route `app/picks/everyone/page.tsx` (server) fetches via
+`getEveryonePicksData()` and renders `EveryonePicksTabs` with four tabs: Predicted champion
+(inline list), Group picks (`GroupMatchBrowser`), Bracket picks (`KnockoutReachBrowser`),
+Knockout stage results (`KnockoutResultsBrowser`); default tab Group picks. The standalone
+`/picks` "Group Picks" page is removed and its two sections (predicted champions + group
+matches) fold in as tabs. Nav drops the separate "Group Picks" link and renames to
+"Everyone's Picks". Delete the two preview routes and `lib/knockout-fake.ts`; repoint home
+card and match-detail back-link to `/picks/everyone`.
 
-**Rationale**: Matches the user's chosen placement (one tabbed destination). The two
-browser components already accept exactly the props we produce (`rungs`/`rounds`, `meId`,
-`totalPlayers`); only `meId` changes from the fake constant to the real profile id.
+**Rationale**: One destination for all everyone-facing picks (user's choice). The existing
+browser components accept exactly the props produced; only the data source and organization
+change. `GroupMatchBrowser` default sort switched to by-date.
 
-**Alternatives considered**: two permanent routes (more nav clutter); replacing existing
-picks pages (riskier, out of chosen scope). Both rejected per the clarification.
+**Alternatives considered**: keeping `/picks` separate or redirecting it (rejected — single
+destination chosen); two permanent knockout routes (more nav clutter, rejected earlier).
 
 ## Decision 6 — Framework usage verification (Principle II)
 

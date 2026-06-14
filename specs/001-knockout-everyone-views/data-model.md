@@ -1,8 +1,9 @@
-# Phase 1 Data Model: Knockout "Everyone" Views — Real Data
+# Phase 1 Data Model: Everyone's Picks Page — Real Data
 
 No new persistent entities — this feature reads existing tables. Below are the source
-tables consumed, the in-memory shapes assembled for the compute functions, and the access
-rules that govern visibility. Types are defined in `lib/types.ts` and `lib/knockout-reach.ts`.
+tables consumed, the in-memory shapes assembled for the four tabs, and the access rules that
+govern visibility. Types live in `lib/types.ts`, `lib/knockout-reach.ts`, and
+`lib/everyone-picks.ts`.
 
 ## Source tables (read-only)
 
@@ -14,47 +15,50 @@ rules that govern visibility. Types are defined in `lib/types.ts` and `lib/knock
 | `advancement_predictions` | `user_id`, `group_letter`, `first_team_id`, `second_team_id` | Own rows always; all rows once `predictions_locked()`. |
 | `third_place_predictions` | `user_id`, `team_id` | Own rows always; all rows once `predictions_locked()`. |
 | `bracket_predictions` | `user_id`, `round`, `slot`, `team_id` | Own rows always; all rows once `predictions_locked()`. |
-| `app_settings` | `lock_at` | Readable by any authenticated user (drives the lock notice). |
+| `prediction_submissions` | `user_id` | Own row always; all rows once `predictions_locked()`. Defines "who counts". |
+| `app_settings` | `lock_at` | Readable by any authenticated user (drives the hidden-until-lock block). |
 
-> The prediction tables' RLS rule is the privacy guarantee. Reading them via the
-> user-scoped client returns only the viewer's rows pre-lock and everyone's post-lock.
+> The data function runs only post-lock (the page renders a hidden block otherwise), so RLS
+> returns all approved rows; results are then scoped to players in `prediction_submissions`.
 
-## Assembled in-memory shapes (inputs to existing compute functions)
+## Assembled in-memory shapes (`EveryonePicksData`)
 
-### `PlayerPredictions` (from `lib/knockout-reach.ts`)
-One per player that has visible prediction rows.
+### `ChampionPick` (Predicted champion tab)
 ```
-{ userId: string; name: string;
-  advancement: AdvancementPrediction[];
-  thirds: number[];                 // team ids from third_place_predictions
-  bracket: BracketPrediction[] }
+{ userId: string; name: string; team: Team | null }
 ```
-Built by grouping the three prediction tables by `user_id` and joining `name` from
-`profiles`. Players with no visible rows are omitted (covers empty/partial predictions).
+One per submitted player; `team` is their Final-round `bracket_predictions` pick resolved
+via `teamsById`, or `null` if they made none.
 
-### `teamsById: Map<number, Team>`
-Built from the `teams` rows. Consumed by both compute functions to resolve team ids.
+### `groupMatches: Match[]` (Group picks tab)
+The `matches` rows with `stage === "group"`, passed to `GroupMatchBrowser` (which links to
+each match's detail page for the per-match pick breakdown).
 
-### `ReachReality` (from `deriveReality(matches)`)
+### `teams: Team[]`
+Passed to `GroupMatchBrowser`; also built into a `Map<number, Team>` internally.
+
+### `PlayerPredictions[]` (Bracket picks + Knockout stage results tabs)
+One per submitted player:
 ```
-{ reached: Record<Round, Set<number>>; champion: number | null }
+{ userId; name; advancement: AdvancementPrediction[]; thirds: number[]; bracket: BracketPrediction[] }
 ```
-Derived from real `matches` (only finished matches contribute). Drives the ✓/✗ overlay and
-the "resolved" flag per rung; unplayed rounds stay unresolved (no fabricated outcomes).
+Fed (with `teamsById` and `deriveReality(matches)`) into the unchanged `computeReachTallies`
+and `computeKnockoutResults`.
 
-## Outputs (consumed by the UI components, unchanged)
-
-- `RungTally[]` from `computeReachTallies(players, teamsById, reality)` → `KnockoutReachBrowser`.
-- `ResultsRound[]` from `computeKnockoutResults(matches, players, teamsById)` → `KnockoutResultsBrowser`.
-- `meId: string` = signed-in profile id (real, replacing `FAKE_ME_ID`).
-- `totalPlayers: number` = count of players represented (pre-lock = 1; post-lock = visible approved pickers).
-- `locked: boolean` = `predictionsLocked()` → toggles the reveal notice / framing.
+### Top-level `EveryonePicksData`
+```
+{ champions: ChampionPick[]; groupMatches: Match[]; teams: Team[];
+  rungs: RungTally[]; rounds: ResultsRound[]; totalPlayers: number }
+```
+`meId` (signed-in profile id) is supplied separately by the page, not by the data function.
 
 ## Validation rules & states
 
-- **Privacy**: pre-lock, no `PlayerPredictions` other than the viewer's may exist (enforced
-  by RLS, not app code). Post-lock, all approved players with predictions appear.
+- **Privacy**: pre-lock the page shows a hidden block and fetches nothing; post-lock RLS
+  permits the full read. `prediction_submissions` defines the visible player set.
+- **Who counts**: only players who formally submitted appear in any tab.
 - **Unplayed / pending**: a rung/match with no reality stays unresolved/not-decided; match
   slots with null team ids render as pending. No winner is invented.
-- **Partial predictions**: each player counts only toward picks they actually submitted.
-- **Single player**: with only the viewer present, both views render normally.
+- **Partial predictions**: a submitted player counts only toward picks they actually made
+  (champion shows a placeholder when absent).
+- **Single submitted player**: all tabs render normally with just that player.

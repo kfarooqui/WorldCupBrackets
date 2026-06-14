@@ -15,6 +15,26 @@ quickstart scenarios — captured as validation checkpoint tasks, not test tasks
 **Organization**: Tasks are grouped by user story so each can be implemented and validated
 independently.
 
+> **Amendment (2026-06-14, post-implementation)**: After the original two-tab build below
+> (T001–T015) shipped, the page was consolidated into a single **"Everyone's Picks"** page
+> with **four tabs**. The follow-on tasks (all completed) were:
+> - [X] A1 Expand the data fn → `lib/everyone-picks.ts` (`getEveryonePicksData`): champions +
+>   group matches + reach/results, scoped to submitted players, user-scoped client.
+> - [X] A2 New 4-tab wrapper `components/EveryonePicksTabs.tsx` (Predicted champion · Group
+>   picks · Bracket picks · Knockout stage results); default tab Group picks.
+> - [X] A3 Rewrite `app/picks/everyone/page.tsx`: title "Everyone's Picks"; full
+>   hidden-until-lock block pre-lock.
+> - [X] A4 Change pre-lock model from own-picks+notice to the full hidden block.
+> - [X] A5 `GroupMatchBrowser` default sort → by date.
+> - [X] A6 Remove standalone `app/picks/page.tsx`; delete superseded `lib/knockout-everyone.ts`
+>   and `components/EveryoneTabs.tsx`.
+> - [X] A7 Nav: drop "Group Picks" link, rename to "Everyone's Picks"; repoint home card and
+>   match-detail back-link to `/picks/everyone`.
+> - [X] A8 Lint + build pass.
+>
+> References to `lib/knockout-everyone.ts` / `EveryoneTabs` / `getEveryoneViewData` and the
+> two-tab/own-picks-notice model in T002–T013 below are superseded by the above.
+
 ## Format: `[ID] [P?] [Story] Description`
 
 - **[P]**: Can run in parallel (different files, no dependencies)
