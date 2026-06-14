@@ -28,11 +28,8 @@ export default async function Nav() {
               <Link href="/picks" className="hover:text-[var(--accent)]">
                 Group Picks
               </Link>
-              <Link href="/picks/knockout-preview" className="hover:text-[var(--accent)]">
-                Bracket Picks
-              </Link>
-              <Link href="/picks/knockout-results" className="hover:text-[var(--accent)]">
-                Knockout Results
+              <Link href="/picks/everyone" className="hover:text-[var(--accent)]">
+                Everyone
               </Link>
             </>
           )}
