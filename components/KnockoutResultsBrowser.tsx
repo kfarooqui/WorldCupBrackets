@@ -66,6 +66,8 @@ function MatchCard({ m, meId }: { m: MatchOutcome; meId?: string }) {
         <span className="shrink-0 text-xs text-[var(--muted)]">{m.reachedLabel}</span>
       </div>
 
+      {m.fixture && <div className="mb-2 text-xs text-[var(--muted)]">🗓 {m.fixture}</div>}
+
       {m.finished && m.winner && m.loser ? (
         <div className="space-y-2">
           <div>

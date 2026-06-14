@@ -50,14 +50,35 @@ const strengthOrder = [...fakeTeams].sort(
 );
 const qualified32 = strengthOrder.slice(0, 32);
 
+// Host venues + kickoff slots, cycled across the bracket (fake but plausible).
+const VENUES = [
+  { venue: "MetLife Stadium", city: "New York / New Jersey" },
+  { venue: "AT&T Stadium", city: "Dallas" },
+  { venue: "SoFi Stadium", city: "Los Angeles" },
+  { venue: "Mercedes-Benz Stadium", city: "Atlanta" },
+  { venue: "NRG Stadium", city: "Houston" },
+  { venue: "Arrowhead Stadium", city: "Kansas City" },
+  { venue: "Lincoln Financial Field", city: "Philadelphia" },
+  { venue: "Lumen Field", city: "Seattle" },
+  { venue: "Levi's Stadium", city: "San Francisco Bay Area" },
+  { venue: "Hard Rock Stadium", city: "Miami" },
+  { venue: "Gillette Stadium", city: "Boston" },
+  { venue: "Estadio Azteca", city: "Mexico City" },
+];
+const KICKOFFS = ["12:00 PM ET", "3:00 PM ET", "6:00 PM ET", "9:00 PM ET"];
+
 let nextMatchId = 1000;
+let venueIdx = 0;
 function ko(
   stage: Round,
   matchNo: number,
   home: Team | null,
   away: Team | null,
   scores: [number, number] | null,
+  date: string,
+  kickoffIdx: number,
 ): Match {
+  const v = VENUES[venueIdx++ % VENUES.length];
   return {
     id: nextMatchId++,
     stage,
@@ -67,10 +88,10 @@ function ko(
     home_team_id: home?.id ?? null,
     away_team_id: away?.id ?? null,
     kickoff_at: null,
-    match_date: null,
-    kickoff: null,
-    venue: null,
-    city: null,
+    match_date: date,
+    kickoff: KICKOFFS[kickoffIdx % KICKOFFS.length],
+    venue: v.venue,
+    city: v.city,
     home_score: scores?.[0] ?? null,
     away_score: scores?.[1] ?? null,
     status: scores ? "finished" : "scheduled",
@@ -81,31 +102,42 @@ function ko(
  * Build a round of finished matches by pairing strongest-vs-weakest; the
  * stronger team (earlier in `seeds`) wins. Returns the winners (next round).
  */
-function playRound(stage: Round, startNo: number, seeds: Team[]): { matches: Match[]; winners: Team[] } {
+function playRound(
+  stage: Round,
+  startNo: number,
+  seeds: Team[],
+  dates: string[],
+): { matches: Match[]; winners: Team[] } {
   const matches: Match[] = [];
   const winners: Team[] = [];
   const n = seeds.length;
   for (let i = 0; i < n / 2; i++) {
     const home = seeds[i];
     const away = seeds[n - 1 - i];
-    matches.push(ko(stage, startNo + i, home, away, [2, 1])); // home (stronger) wins
-    winners.push(home);
+    matches.push(ko(stage, startNo + i, home, away, [2, 1], dates[i % dates.length], i));
+    winners.push(home); // stronger team (earlier seed) wins
   }
   return { matches, winners };
 }
 
-const r32 = playRound("r32", 73, qualified32);
-const r16 = playRound("r16", 89, r32.winners); // 16 → 8
-const qf = playRound("qf", 97, r16.winners); //   8 → 4
+const r32 = playRound("r32", 73, qualified32, [
+  "2026-06-28", "2026-06-29", "2026-06-30", "2026-07-01", "2026-07-02", "2026-07-03",
+]);
+const r16 = playRound("r16", 89, r32.winners, [
+  "2026-07-04", "2026-07-05", "2026-07-06", "2026-07-07",
+]); // 16 → 8
+const qf = playRound("qf", 97, r16.winners, [
+  "2026-07-09", "2026-07-10", "2026-07-11",
+]); // 8 → 4
 const sfTeams = qf.winners; // 4 teams reached the SF…
 
-// …but the SF isn't played yet: teams are placed, no scores.
+// …but the SF isn't played yet: teams + venue/date are set, no scores.
 const sfMatches: Match[] = [
-  ko("sf", 101, sfTeams[0], sfTeams[3], null),
-  ko("sf", 102, sfTeams[1], sfTeams[2], null),
+  ko("sf", 101, sfTeams[0], sfTeams[3], null, "2026-07-14", 2),
+  ko("sf", 102, sfTeams[1], sfTeams[2], null, "2026-07-15", 2),
 ];
-// Final not set yet.
-const finalMatch: Match[] = [ko("final", 104, null, null, null)];
+// Final: venue/date known in advance even before the teams are.
+const finalMatch: Match[] = [ko("final", 104, null, null, null, "2026-07-19", 2)];
 
 export const fakeMatches: Match[] = [
   ...r32.matches,

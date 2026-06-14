@@ -1,6 +1,7 @@
 import type { Team, Match, BracketPrediction, AdvancementPrediction } from "@/lib/types";
 import type { Round } from "@/lib/bracket";
 import { SCORING, ROUND_LABEL, reachPoints, type KnockoutRound } from "@/lib/scoring";
+import { fixtureLine } from "@/lib/format";
 
 /**
  * The "everyone" knockout view is organised by REACH rungs, not by matchup,
@@ -168,6 +169,8 @@ export type MatchOutcome = {
   matchNo: number;
   finished: boolean;
   score: string | null;
+  /** "Jun 11 · 3:00 PM ET · Stadium, City" — empty until the fixture is set. */
+  fixture: string;
   /** What a correct pick here earns, and what advancing means. */
   points: number;
   reachedLabel: string; // "Round of 16", … or "Champion" for the Final
@@ -245,6 +248,7 @@ export function computeKnockoutResults(
           matchNo: m.match_no,
           finished,
           score: finished ? `${m.home_score}–${m.away_score}` : null,
+          fixture: fixtureLine(m),
           points,
           reachedLabel,
           winner,
