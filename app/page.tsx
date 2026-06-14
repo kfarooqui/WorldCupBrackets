@@ -71,7 +71,7 @@ export default async function Home() {
           <div className="mt-2 font-bold">Leaderboard</div>
           <p className="text-sm text-[var(--muted)]">See who&apos;s in the lead.</p>
         </Link>
-        <Link href="/picks" className="card hover:border-[var(--primary)]">
+        <Link href="/picks/everyone" className="card hover:border-[var(--primary)]">
           <div className="text-2xl">👀</div>
           <div className="mt-2 font-bold">Everyone&apos;s picks</div>
           <p className="text-sm text-[var(--muted)]">

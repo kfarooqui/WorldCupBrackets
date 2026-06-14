@@ -20,7 +20,7 @@ export default function GroupMatchBrowser({
   matches: Match[];
   teams: Team[];
 }) {
-  const [view, setView] = useState<View>("group");
+  const [view, setView] = useState<View>("date");
   const teamsById = new Map(teams.map((t) => [t.id, t]));
 
   // dateMode shows a Group tag (since rows aren't grouped by group) and omits
