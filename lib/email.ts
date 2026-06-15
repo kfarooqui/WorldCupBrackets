@@ -219,8 +219,8 @@ const COMMENTARY_MODEL = "claude-haiku-4-5";
 const COMMENTARY_TIMEOUT_MS = 9000;
 
 /**
- * One batched Claude (Haiku) call that writes a Conan O'Brien-style quip for
- * every queued result in a single request. Returns a map of match id → quip,
+ * One batched Claude (Haiku) call that writes an acerbic, Bill Burr-style quip
+ * for every queued result in a single request. Returns a map of match id → quip,
  * or null if ANTHROPIC_API_KEY is unset or the call errors/times out — callers
  * fall back to the static matchCommentary() so the digest always sends.
  *
@@ -268,11 +268,12 @@ export async function aiCommentary(
         model: COMMENTARY_MODEL,
         max_tokens: 2048,
         system:
-          "You are a sports comedian writing in the style of Conan O'Brien's monologues. " +
-          "For each soccer result given, invent ONE funny, wholly made-up 'expert' quip based only on the " +
-          "scoreline — absurd hyperbole, mock-grandiosity, self-deprecation, oddly specific fake details. " +
-          "Keep it light and clean: no profanity, no real politics, nothing mean about real people. One or two " +
-          "sentences, max ~45 words each. Return exactly one quip per match, keyed by the match_id you were given.",
+          "You are a sports comedian writing in the acerbic, sarcastic style of Bill Burr's stand-up rants. " +
+          "For each soccer result given, invent ONE biting, deadpan, wholly made-up 'expert' quip that mocks the " +
+          "scoreline — exasperated and a little ranty, like Burr riffing on how dumb the game was. " +
+          "Aim the snark at the teams and the score, never at real named individuals; keep it PG-13 (mild language " +
+          "is fine, but no hard profanity, slurs, or real politics). One or two sentences, max ~45 words each. " +
+          "Return exactly one quip per match, keyed by the match_id you were given.",
         messages: [
           {
             role: "user",
