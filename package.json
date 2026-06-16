@@ -10,6 +10,7 @@
     "seed": "node --env-file=.env.local node_modules/tsx/dist/cli.mjs scripts/seed.ts",
     "test-email": "node --env-file=.env.local node_modules/tsx/dist/cli.mjs scripts/test-email.ts",
     "preview-digest": "node --env-file=.env.local node_modules/tsx/dist/cli.mjs scripts/preview-digest.ts",
+    "preview-morning": "node --env-file=.env.local node_modules/tsx/dist/cli.mjs scripts/preview-morning.ts",
     "send-signin-links": "node --env-file=.env.local node_modules/tsx/dist/cli.mjs scripts/send-signin-links.ts"
   },
   "dependencies": {
