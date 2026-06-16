@@ -9,6 +9,7 @@ import type { Round } from "@/lib/bracket";
 
 export type ScoreBreakdown = {
   group: number;
+  groupExact: number; // portion of `group` that came from exact-scoreline bonuses
   reach: number; // all "reached the round" points (R32→Final)
   champion: number;
   total: number;
@@ -69,6 +70,7 @@ type Reality = ReturnType<typeof deriveReality>;
 export function scoreUser(pred: UserPredictions, reality: Reality): ScoreBreakdown {
   // ── Group stage ──
   let group = 0;
+  let groupExact = 0; // the exact-scoreline bonus portion (excluded by the "participation" view)
   for (const mp of pred.matches) {
     const real = reality.finishedGroup.get(mp.match_id);
     if (!real) continue;
@@ -79,6 +81,14 @@ export function scoreUser(pred: UserPredictions, reality: Reality): ScoreBreakdo
       real.home_score!,
       real.away_score!,
     );
+    if (
+      mp.pred_home_score !== null &&
+      mp.pred_away_score !== null &&
+      mp.pred_home_score === real.home_score &&
+      mp.pred_away_score === real.away_score
+    ) {
+      groupExact += SCORING.groupExactScore;
+    }
   }
 
   // ── Reach-the-round ──
@@ -131,5 +141,5 @@ export function scoreUser(pred: UserPredictions, reality: Reality): ScoreBreakdo
     championPts = SCORING.champion;
   }
 
-  return { group, reach, champion: championPts, total: group + reach + championPts };
+  return { group, groupExact, reach, champion: championPts, total: group + reach + championPts };
 }
