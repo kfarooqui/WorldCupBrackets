@@ -220,7 +220,7 @@ const COMMENTARY_MODEL = "claude-haiku-4-5";
 const COMMENTARY_TIMEOUT_MS = 9000;
 
 /**
- * One batched Claude (Haiku) call that writes a Conan O'Brien-style quip for
+ * One batched Claude (Haiku) call that writes a John Oliver-style quip for
  * every queued result in a single request. Returns a map of match id → quip,
  * or null if ANTHROPIC_API_KEY is unset or the call errors/times out — callers
  * fall back to the static matchCommentary() so the digest always sends.
@@ -269,10 +269,12 @@ export async function aiCommentary(
         model: COMMENTARY_MODEL,
         max_tokens: 2048,
         system:
-          "You are a sports comedian writing in the style of Conan O'Brien's monologues. " +
+          "You are a sports comedian writing in the style of John Oliver's Last Week Tonight rants — wry, " +
+          "with mounting incredulity, an absurd extended simile or metaphor, and a tangent that escalates " +
+          "beyond reason. " +
           "For each soccer result given, invent ONE funny, wholly made-up 'expert' quip based only on the " +
           "scoreline — absurd hyperbole, mock-grandiosity, self-deprecation, oddly specific fake details. " +
-          "Keep it light and clean: no profanity, no real politics, nothing mean about real people. One or two " +
+          "Keep it light and clean: no profanity, no real-world politics or news, nothing mean about real people. One or two " +
           "sentences, max ~45 words each. Return exactly one quip per match, keyed by the match_id you were given.",
         messages: [
           {
@@ -388,7 +390,7 @@ export async function sendMatchDayDigest(): Promise<{
 
 /* ──────────────────────────────────────────────────────────────────────────
  * Daily morning briefing — yesterday's results recapped + today's fixtures
- * "predicted", all in the same fabricated Conan O'Brien voice as the digest.
+ * "predicted", all in the same fabricated John Oliver voice as the digest.
  * ────────────────────────────────────────────────────────────────────────── */
 
 /** Today's date in US Eastern time as "YYYY-MM-DD" (the tournament's local day). */
@@ -402,7 +404,7 @@ function prevDay(ymd: string): string {
   return new Date(Date.UTC(y, m - 1, d) - 86_400_000).toISOString().slice(0, 10);
 }
 
-/** Static, no-API fallback "prediction" for one upcoming fixture (Conan-style). */
+/** Static, no-API fallback "prediction" for one upcoming fixture (John Oliver-style). */
 export function matchPrediction(m: Match, teams: Map<number, Team>): string {
   const home = teams.get(m.home_team_id ?? -1)?.name ?? "Someone";
   const away = teams.get(m.away_team_id ?? -1)?.name ?? "Someone";
@@ -416,7 +418,7 @@ export function matchPrediction(m: Match, teams: Map<number, Team>): string {
 }
 
 /**
- * One batched Claude (Haiku) call that writes a Conan O'Brien-style mock
+ * One batched Claude (Haiku) call that writes a John Oliver-style mock
  * "prediction" for each of today's upcoming fixtures — based only on the team
  * names, since no score exists yet. Same key/fallback/timeout contract as
  * aiCommentary(): returns match id → prediction, or null on any failure so
@@ -462,10 +464,12 @@ export async function aiPredictions(
         model: COMMENTARY_MODEL,
         max_tokens: 2048,
         system:
-          "You are a sports comedian writing in the style of Conan O'Brien's monologues. " +
+          "You are a sports comedian writing in the style of John Oliver's Last Week Tonight rants — wry, " +
+          "with mounting incredulity, an absurd extended simile or metaphor, and a tangent that escalates " +
+          "beyond reason. " +
           "For each UPCOMING soccer fixture given, invent ONE funny, wholly made-up 'expert' prediction based only " +
           "on the two team names — a confident, absurd forecast played for laughs (no real scoreline exists yet). " +
-          "Keep it light and clean: no profanity, no real politics, nothing mean about real people. One or two " +
+          "Keep it light and clean: no profanity, no real-world politics or news, nothing mean about real people. One or two " +
           "sentences, max ~45 words each. Return exactly one prediction per match, keyed by the match_id you were given.",
         messages: [
           {
@@ -513,7 +517,7 @@ export function resultsTheme(matches: Match[]): string {
 /**
  * One batched Claude (Haiku) call that reads ALL of yesterday's results and
  * returns a SINGLE faux-insightful "what did we learn" blurb (3-5 sentences),
- * Conan-style. Returns null on any failure → callers fall back to resultsTheme().
+ * John Oliver-style. Returns null on any failure → callers fall back to resultsTheme().
  */
 export async function aiResultsTheme(
   matches: Match[],
@@ -542,7 +546,9 @@ export async function aiResultsTheme(
         model: COMMENTARY_MODEL,
         max_tokens: 512,
         system:
-          "You are a sports comedian writing in the style of Conan O'Brien's monologues. " +
+          "You are a sports comedian writing in the style of John Oliver's Last Week Tonight rants — wry, " +
+          "with mounting incredulity, an absurd extended simile or metaphor, and a tangent that escalates " +
+          "beyond reason. " +
           "You will be given ALL of yesterday's soccer results at once. Write ONE single 'what did we learn " +
           "yesterday' blurb that confidently claims to have spotted a grand, sweeping theme across the results — " +
           "analytical-sounding and utterly nonsensical, faux-insightful rather than a game-by-game recap. " +

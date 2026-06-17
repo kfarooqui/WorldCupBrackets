@@ -1,5 +1,5 @@
 /**
- * Preview the results-digest email — including the Conan-style commentary —
+ * Preview the results-digest email — including the John Oliver-style commentary —
  * WITHOUT touching the database or sending any email.
  *
  *   npm run preview-digest          # writes digest-preview.html, opens nothing
