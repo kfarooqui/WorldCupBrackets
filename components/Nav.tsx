@@ -25,6 +25,9 @@ export default async function Nav() {
               <Link href="/leaderboard" className="hover:text-[var(--accent)]">
                 Leaderboard
               </Link>
+              <Link href="/standings" className="hover:text-[var(--accent)]">
+                Standings
+              </Link>
               <Link href="/picks/everyone" className="hover:text-[var(--accent)]">
                 Everyone&apos;s Picks
               </Link>

@@ -4,6 +4,9 @@ import { GROUP_LETTERS } from "@/lib/worldcup-data";
 export type TeamStanding = {
   teamId: number;
   played: number;
+  won: number;
+  drawn: number;
+  lost: number;
   points: number;
   gf: number;
   ga: number;
@@ -19,7 +22,17 @@ function compare(a: TeamStanding, b: TeamStanding) {
 export function computeStandings(matches: Match[], teams: Team[]) {
   const table = new Map<number, TeamStanding>();
   teams.forEach((t) =>
-    table.set(t.id, { teamId: t.id, played: 0, points: 0, gf: 0, ga: 0, gd: 0 }),
+    table.set(t.id, {
+      teamId: t.id,
+      played: 0,
+      won: 0,
+      drawn: 0,
+      lost: 0,
+      points: 0,
+      gf: 0,
+      ga: 0,
+      gd: 0,
+    }),
   );
 
   matches
@@ -39,9 +52,9 @@ export function computeStandings(matches: Match[], teams: Team[]) {
       h.gf += m.home_score!; h.ga += m.away_score!;
       a.gf += m.away_score!; a.ga += m.home_score!;
       h.gd = h.gf - h.ga; a.gd = a.gf - a.ga;
-      if (m.home_score! > m.away_score!) h.points += 3;
-      else if (m.home_score! < m.away_score!) a.points += 3;
-      else { h.points += 1; a.points += 1; }
+      if (m.home_score! > m.away_score!) { h.points += 3; h.won++; a.lost++; }
+      else if (m.home_score! < m.away_score!) { a.points += 3; a.won++; h.lost++; }
+      else { h.points += 1; a.points += 1; h.drawn++; a.drawn++; }
     });
 
   // Per-group sorted standings.
