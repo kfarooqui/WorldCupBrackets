@@ -19,7 +19,8 @@ export default async function StandingsPage() {
   const teamsById = new Map(allTeams.map((t) => [t.id, t]));
   const { byGroup } = computeStandings((matches as Match[]) ?? [], allTeams);
 
-  const numCls = "py-1 px-1 text-right text-[var(--muted)]";
+  const numHead = "w-9 px-1 py-1 text-right font-medium";
+  const numCell = "px-1 py-1 text-right text-[var(--muted)]";
 
   return (
     <div>
@@ -34,18 +35,18 @@ export default async function StandingsPage() {
           <div key={letter} className="card">
             <h2 className="mb-2 font-bold">Group {letter}</h2>
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="text-left text-xs text-[var(--muted)]">
+              <table className="w-full table-fixed text-sm tabular-nums">
+                <thead className="text-xs text-[var(--muted)]">
                   <tr className="border-b border-[var(--border)]">
-                    <th className="py-1 pr-2">Team</th>
-                    <th className="py-1 px-1 text-right" title="Played">P</th>
-                    <th className="py-1 px-1 text-right" title="Won">W</th>
-                    <th className="py-1 px-1 text-right" title="Drawn">D</th>
-                    <th className="py-1 px-1 text-right" title="Lost">L</th>
-                    <th className="py-1 px-1 text-right" title="Goals for">GF</th>
-                    <th className="py-1 px-1 text-right" title="Goals against">GA</th>
-                    <th className="py-1 px-1 text-right" title="Goal difference">GD</th>
-                    <th className="py-1 pl-1 text-right" title="Points">Pts</th>
+                    <th className="py-1 pr-2 text-left font-medium">Team</th>
+                    <th className={numHead} title="Played">P</th>
+                    <th className={numHead} title="Won">W</th>
+                    <th className={numHead} title="Drawn">D</th>
+                    <th className={numHead} title="Lost">L</th>
+                    <th className={numHead} title="Goals for">GF</th>
+                    <th className={numHead} title="Goals against">GA</th>
+                    <th className={numHead} title="Goal difference">GD</th>
+                    <th className={numHead} title="Points">Pts</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -58,17 +59,17 @@ export default async function StandingsPage() {
                           i < 2 ? "bg-[var(--primary)]/5" : ""
                         }`}
                       >
-                        <td className="py-1 pr-2 whitespace-nowrap font-medium">
+                        <td className="truncate py-1 pr-2 font-medium">
                           {t?.flag_emoji} {t?.name ?? "?"}
                         </td>
-                        <td className={numCls}>{s.played}</td>
-                        <td className={numCls}>{s.won}</td>
-                        <td className={numCls}>{s.drawn}</td>
-                        <td className={numCls}>{s.lost}</td>
-                        <td className={numCls}>{s.gf}</td>
-                        <td className={numCls}>{s.ga}</td>
-                        <td className={numCls}>{s.gd > 0 ? `+${s.gd}` : s.gd}</td>
-                        <td className="py-1 pl-1 text-right font-bold">{s.points}</td>
+                        <td className={numCell}>{s.played}</td>
+                        <td className={numCell}>{s.won}</td>
+                        <td className={numCell}>{s.drawn}</td>
+                        <td className={numCell}>{s.lost}</td>
+                        <td className={numCell}>{s.gf}</td>
+                        <td className={numCell}>{s.ga}</td>
+                        <td className={numCell}>{s.gd > 0 ? `+${s.gd}` : s.gd}</td>
+                        <td className="px-1 py-1 text-right font-bold">{s.points}</td>
                       </tr>
                     );
                   })}
