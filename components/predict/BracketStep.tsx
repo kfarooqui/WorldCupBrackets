@@ -12,6 +12,7 @@ import {
 } from "@/lib/bracket";
 import { KO_SCHEDULE } from "@/lib/schedule";
 import { fixtureLine } from "@/lib/format";
+import { SCORING, reachPoints } from "@/lib/scoring";
 
 const ROUND_TITLE: Record<Round, string> = {
   r32: "Round of 32",
@@ -28,6 +29,8 @@ export default function BracketStep({
   picks,
   onPick,
   readOnly,
+  reached,
+  champion,
 }: {
   teamsById: Map<number, Team>;
   advancement: Advancement;
@@ -35,9 +38,35 @@ export default function BracketStep({
   picks: BracketPicks;
   onPick: (round: Round, slot: number, teamId: number) => void;
   readOnly: boolean;
+  reached?: Record<Round, Set<number>>;
+  champion?: number | null;
 }) {
   const occ = computeOccupants(advancement, thirds, picks);
-  const champion = picks.final?.[0] ?? null;
+  const championPick = picks.final?.[0] ?? null;
+
+  // Map a bracket pick to the round its winner reaches, to grade it against reality.
+  const NEXT: Record<Round, Round | "champion"> = {
+    r32: "r16",
+    r16: "qf",
+    qf: "sf",
+    sf: "final",
+    final: "champion",
+  };
+  const evalPick = (
+    round: Round,
+    team: number | null,
+  ): { ok: boolean; pts: number } | null => {
+    if (team == null) return null;
+    const target = NEXT[round];
+    if (target === "champion") {
+      if (champion == null) return null;
+      return { ok: champion === team, pts: SCORING.champion };
+    }
+    const set = reached?.[target];
+    if (!set || set.size === 0) return null;
+    return { ok: set.has(team), pts: reachPoints(target) };
+  };
+  const champEval = evalPick("final", championPick);
 
   return (
     <div>
@@ -47,14 +76,23 @@ export default function BracketStep({
         later rounds update automatically.
       </p>
 
-      {champion && (
+      {championPick && (
         <div className="mb-4 card border-[var(--accent)] text-center">
           <div className="text-xs uppercase tracking-wide text-[var(--muted)]">
             Your champion 🏆
           </div>
           <div className="mt-1 text-xl font-extrabold text-[var(--accent)]">
-            {teamsById.get(champion)?.flag_emoji} {teamsById.get(champion)?.name}
+            {teamsById.get(championPick)?.flag_emoji} {teamsById.get(championPick)?.name}
           </div>
+          {champEval && (
+            <div
+              className={`mt-1 text-sm font-bold ${
+                champEval.ok ? "text-green-300" : "text-red-300"
+              }`}
+            >
+              {champEval.ok ? `✓ Champion · +${champEval.pts}` : "✗ Didn't win it"}
+            </div>
+          )}
         </div>
       )}
 
@@ -72,6 +110,7 @@ export default function BracketStep({
                 {DISPLAY_ORDER[round].map((slot, i) => {
                   const [top, bot] = occ[round][slot];
                   const chosen = picks[round]?.[slot] ?? null;
+                  const chosenEval = evalPick(round, chosen);
                   return (
                     <div
                       key={slot}
@@ -102,6 +141,7 @@ export default function BracketStep({
                             chosen={chosen === top}
                             onClick={() => top && onPick(round, slot, top)}
                             readOnly={readOnly}
+                            result={chosen === top ? chosenEval : null}
                           />
                           <div className="h-px bg-[var(--border)]" />
                           <TeamSlot
@@ -110,6 +150,7 @@ export default function BracketStep({
                             chosen={chosen === bot}
                             onClick={() => bot && onPick(round, slot, bot)}
                             readOnly={readOnly}
+                            result={chosen === bot ? chosenEval : null}
                           />
                         </div>
                         <div className="absolute left-0 right-0 top-full pt-0.5">
@@ -149,12 +190,14 @@ function TeamSlot({
   chosen,
   onClick,
   readOnly,
+  result,
 }: {
   teamId: number | null;
   team: Team | undefined;
   chosen: boolean;
   onClick: () => void;
   readOnly: boolean;
+  result?: { ok: boolean; pts: number } | null;
 }) {
   return (
     <button
@@ -176,6 +219,15 @@ function TeamSlot({
         </>
       ) : (
         <span className="italic">TBD</span>
+      )}
+      {result && (
+        <span
+          className={`ml-auto shrink-0 rounded px-1 text-[10px] font-bold ${
+            result.ok ? "bg-green-500/30 text-green-100" : "bg-red-500/30 text-red-100"
+          }`}
+        >
+          {result.ok ? `✓ +${result.pts}` : "✗"}
+        </span>
       )}
     </button>
   );

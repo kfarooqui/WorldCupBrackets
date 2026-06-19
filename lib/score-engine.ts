@@ -143,3 +143,32 @@ export function scoreUser(pred: UserPredictions, reality: Reality): ScoreBreakdo
 
   return { group, groupExact, reach, champion: championPts, total: group + reach + championPts };
 }
+
+/**
+ * Serializable view of reality for client components (no Sets/Maps): finished
+ * group scores by match id, the teams that reached each round, and the champion.
+ */
+export type PickResults = {
+  groupScores: Record<number, { home: number; away: number }>;
+  reached: Record<Round, number[]>;
+  champion: number | null;
+};
+
+export function serializeReality(matches: Match[]): PickResults {
+  const r = deriveReality(matches);
+  const groupScores: Record<number, { home: number; away: number }> = {};
+  r.finishedGroup.forEach((m, id) => {
+    groupScores[id] = { home: m.home_score!, away: m.away_score! };
+  });
+  return {
+    groupScores,
+    reached: {
+      r32: [...r.reached.r32],
+      r16: [...r.reached.r16],
+      qf: [...r.reached.qf],
+      sf: [...r.reached.sf],
+      final: [...r.reached.final],
+    },
+    champion: r.champion,
+  };
+}

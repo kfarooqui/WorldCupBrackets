@@ -8,6 +8,12 @@ import type {
   ThirdPlacePrediction,
   BracketPrediction,
 } from "@/lib/types";
+import {
+  deriveReality,
+  scoreUser,
+  serializeReality,
+  type UserPredictions,
+} from "@/lib/score-engine";
 import PredictWizard from "@/components/predict/PredictWizard";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +26,7 @@ export default async function PredictPage() {
 
   const [
     { data: teams },
-    { data: matches },
+    { data: allMatches },
     { data: matchPreds },
     { data: advPreds },
     { data: thirdPreds },
@@ -28,7 +34,7 @@ export default async function PredictPage() {
     { data: submission },
   ] = await Promise.all([
     supabase.from("teams").select("*").order("id"),
-    supabase.from("matches").select("*").eq("stage", "group").order("match_no"),
+    supabase.from("matches").select("*").order("match_no"),
     supabase.from("match_predictions").select("*").eq("user_id", uid),
     supabase.from("advancement_predictions").select("*").eq("user_id", uid),
     supabase.from("third_place_predictions").select("*").eq("user_id", uid),
@@ -36,16 +42,38 @@ export default async function PredictPage() {
     supabase.from("prediction_submissions").select("submitted_at").eq("user_id", uid).maybeSingle(),
   ]);
 
+  const matches = (allMatches as Match[]) ?? [];
+  const groupMatches = matches.filter((m) => m.stage === "group");
+  const thirds = (thirdPreds as ThirdPlacePrediction[]) ?? [];
+
+  // Score the user's picks against real results so the wizard can show right/wrong + points.
+  const userPreds: UserPredictions = {
+    matches: (matchPreds as MatchPrediction[]) ?? [],
+    advancement: (advPreds as AdvancementPrediction[]) ?? [],
+    thirds: thirds.map((t) => t.team_id),
+    bracket: (bracketPreds as BracketPrediction[]) ?? [],
+  };
+  const reality = deriveReality(matches);
+  const breakdown = scoreUser(userPreds, reality);
+  const results = serializeReality(matches);
+  const hasResults =
+    reality.finishedGroup.size > 0 ||
+    results.reached.r16.length > 0 ||
+    results.champion != null;
+
   return (
     <PredictWizard
       teams={(teams as Team[]) ?? []}
-      groupMatches={(matches as Match[]) ?? []}
-      initialMatchPreds={(matchPreds as MatchPrediction[]) ?? []}
-      initialAdvancement={(advPreds as AdvancementPrediction[]) ?? []}
-      initialThirds={(thirdPreds as ThirdPlacePrediction[]) ?? []}
-      initialBracket={(bracketPreds as BracketPrediction[]) ?? []}
+      groupMatches={groupMatches}
+      initialMatchPreds={userPreds.matches}
+      initialAdvancement={userPreds.advancement}
+      initialThirds={thirds}
+      initialBracket={userPreds.bracket}
       locked={locked}
       submittedAt={submission?.submitted_at ?? null}
+      results={results}
+      breakdown={breakdown}
+      hasResults={hasResults}
     />
   );
 }

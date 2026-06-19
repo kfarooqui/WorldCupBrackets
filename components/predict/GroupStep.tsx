@@ -24,18 +24,21 @@ export default function GroupStep({
   picks,
   onChange,
   readOnly,
+  groupScores,
 }: {
   matches: Match[];
   teamsById: Map<number, Team>;
   picks: Record<number, MatchPick>;
   onChange: (matchId: number, value: MatchPick) => void;
   readOnly: boolean;
+  groupScores?: Record<number, { home: number; away: number }>;
 }) {
   return (
     <div className="space-y-6">
       {GROUP_LETTERS.map((letter) => {
         const groupMatches = matches.filter((m) => m.group_letter === letter);
         const done = groupMatches.filter((m) => picks[m.id]?.pick).length;
+        const groupHasResults = groupMatches.some((m) => groupScores?.[m.id]);
         return (
           <div key={letter} className="card">
             <div className="mb-3 flex items-center justify-between">
@@ -44,6 +47,12 @@ export default function GroupStep({
                 {done}/{groupMatches.length} picked
               </span>
             </div>
+            {groupHasResults && (
+              <div className="mb-1 hidden px-2 text-xs font-medium text-[var(--muted)] sm:grid sm:grid-cols-[1fr_7rem]">
+                <span />
+                <span className="pl-3 text-right">Actual Results</span>
+              </div>
+            )}
             <div className="space-y-2">
               {groupMatches.map((m) => {
                 const home = teamsById.get(m.home_team_id!);
@@ -65,8 +74,25 @@ export default function GroupStep({
                   const io = impliedOutcome(next.ph, next.pa);
                   onChange(m.id, { ...next, pick: io ?? next.pick });
                 };
+                const res = groupScores?.[m.id];
+                const actual = res
+                  ? res.home > res.away
+                    ? "HOME"
+                    : res.home < res.away
+                      ? "AWAY"
+                      : "DRAW"
+                  : null;
+                const outcomeRight = res != null && p.pick === actual;
+                const exactRight =
+                  res != null &&
+                  p.ph !== "" &&
+                  p.pa !== "" &&
+                  Number(p.ph) === res.home &&
+                  Number(p.pa) === res.away;
+                const pts = (outcomeRight ? 1 : 0) + (exactRight ? 1 : 0);
                 return (
                   <div key={m.id} className="rounded-lg bg-[var(--surface-2)] p-2">
+                  <div className="grid gap-2 sm:grid-cols-[1fr_7rem]">
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto]">
                     <div className="grid grid-cols-3 gap-1">
                       <PickButton
@@ -111,6 +137,24 @@ export default function GroupStep({
                         aria-label="predicted away score"
                       />
                     </div>
+                    </div>
+                    {res && (
+                      <div className="flex items-center justify-between gap-2 border-t border-[var(--border)] pt-2 sm:h-full sm:flex-col sm:items-end sm:justify-center sm:border-l sm:border-t-0 sm:pl-3 sm:pt-0">
+                        <div className="text-sm font-semibold tabular-nums">
+                          {res.home}–{res.away}
+                        </div>
+                        <span
+                          className={`pill text-xs ${
+                            outcomeRight
+                              ? "bg-green-500/20 text-green-300"
+                              : "bg-red-500/20 text-red-300"
+                          }`}
+                        >
+                          {outcomeRight ? `✓ +${pts}` : "✗ 0"}
+                          {exactRight ? " · exact" : ""}
+                        </span>
+                      </div>
+                    )}
                     </div>
                     {fixtureLine(m) && (
                       <p className="mt-1 px-1 text-[11px] text-[var(--muted)]">

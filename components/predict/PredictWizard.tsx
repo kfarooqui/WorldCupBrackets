@@ -34,6 +34,7 @@ import {
   computeStats,
   groupOrderConsistent,
 } from "@/lib/predict-standings";
+import type { PickResults, ScoreBreakdown } from "@/lib/score-engine";
 
 type Step = "group" | "advance" | "bracket";
 const STEPS: { key: Step; label: string }[] = [
@@ -51,6 +52,9 @@ export default function PredictWizard(props: {
   initialBracket: BracketPrediction[];
   locked: boolean;
   submittedAt: string | null;
+  results: PickResults;
+  breakdown: ScoreBreakdown;
+  hasResults: boolean;
 }) {
   const router = useRouter();
   const teamsById = useMemo(
@@ -59,6 +63,18 @@ export default function PredictWizard(props: {
   );
 
   const readOnly = props.locked || !!props.submittedAt;
+
+  // Real results (as Sets) so the steps can mark each pick right/wrong + points.
+  const reachedSets = useMemo(
+    () => ({
+      r32: new Set(props.results.reached.r32),
+      r16: new Set(props.results.reached.r16),
+      qf: new Set(props.results.reached.qf),
+      sf: new Set(props.results.reached.sf),
+      final: new Set(props.results.reached.final),
+    }),
+    [props.results],
+  );
 
   // ── State ─────────────────────────────────────────────────────────────
   const [matchPicks, setMatchPicks] = useState<Record<number, MatchPick>>(() => {
@@ -286,6 +302,31 @@ export default function PredictWizard(props: {
         />
       </div>
 
+      {/* Your score so far — appears once results start coming in */}
+      {props.hasResults && (
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+          <div>
+            <div className="text-xs uppercase tracking-wide text-[var(--muted)]">
+              Your score so far
+            </div>
+            <div className="text-2xl font-extrabold text-[var(--accent)]">
+              {props.breakdown.total} pts
+            </div>
+          </div>
+          <div className="flex gap-4 text-sm text-[var(--muted)]">
+            <span>
+              Group <strong className="text-[var(--foreground)]">{props.breakdown.group}</strong>
+            </span>
+            <span>
+              Bracket <strong className="text-[var(--foreground)]">{props.breakdown.reach}</strong>
+            </span>
+            <span>
+              🏆 <strong className="text-[var(--foreground)]">{props.breakdown.champion}</strong>
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Inconsistency warning — group picks no longer match the seeds/bracket */}
       {!readOnly && !isConsistent && (
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-yellow-500/60 bg-yellow-500/10 p-4">
@@ -333,6 +374,7 @@ export default function PredictWizard(props: {
           picks={matchPicks}
           onChange={onMatchChange}
           readOnly={readOnly}
+          groupScores={props.results.groupScores}
         />
       )}
       {step === "advance" && (
@@ -354,6 +396,8 @@ export default function PredictWizard(props: {
           picks={bracketPicks}
           onPick={onPick}
           readOnly={readOnly}
+          reached={reachedSets}
+          champion={props.results.champion}
         />
       )}
 
