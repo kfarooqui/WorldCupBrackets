@@ -10,6 +10,12 @@ import ResultRow from "./ResultRow";
 
 const KO_STAGES = ["r32", "r16", "qf", "sf", "final"] as const;
 
+// Key a row by its server-side data so it remounts (re-initialising ResultRow's
+// local input/select state) whenever that data changes — e.g. after Auto-fill
+// R32 sets the knockout teams, or another result is saved.
+const rowKey = (m: Match) =>
+  `${m.id}:${m.home_team_id ?? ""}:${m.away_team_id ?? ""}:${m.home_score ?? ""}:${m.away_score ?? ""}:${m.status}`;
+
 export default function ResultsManager({
   matches,
   teams,
@@ -84,7 +90,7 @@ export default function ResultsManager({
               <h3 className="mb-2 font-bold">{date ? fmtDate(date) : "Date TBD"}</h3>
               <div className="space-y-2">
                 {items.map((m) => (
-                  <ResultRow key={m.id} match={m} teams={teams} allowTeamEdit={false} />
+                  <ResultRow key={rowKey(m)} match={m} teams={teams} allowTeamEdit={false} />
                 ))}
               </div>
             </div>
@@ -106,7 +112,7 @@ export default function ResultsManager({
                 {matches
                   .filter((m) => m.stage === stage)
                   .map((m) => (
-                    <ResultRow key={m.id} match={m} teams={teams} allowTeamEdit />
+                    <ResultRow key={rowKey(m)} match={m} teams={teams} allowTeamEdit />
                   ))}
               </div>
             </div>
