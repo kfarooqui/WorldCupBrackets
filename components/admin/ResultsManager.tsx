@@ -2,7 +2,6 @@
 
 import { useState, useTransition } from "react";
 import type { Match, Team } from "@/lib/types";
-import { autoFillR32 } from "@/app/actions/results";
 import { sendDigest } from "@/app/actions/email";
 import { ROUND_LABEL } from "@/lib/scoring";
 import { fmtDate, kickoffMinutes } from "@/lib/format";
@@ -99,12 +98,11 @@ export default function ResultsManager({
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="card flex items-center justify-between">
+          <div className="card">
             <p className="text-sm text-[var(--muted)]">
-              After the group stage, auto-fill the Round of 32 from standings, then tweak any
-              matchup. Winners advance automatically as you enter knockout scores.
+              Set or adjust the knockout teams, then enter scores — winners advance
+              automatically to the next round.
             </p>
-            <AutoFillButton />
           </div>
           {KO_STAGES.map((stage) => (
             <div key={stage} className="card">
@@ -128,18 +126,5 @@ export default function ResultsManager({
         </div>
       )}
     </div>
-  );
-}
-
-function AutoFillButton() {
-  const [pending, start] = useTransition();
-  return (
-    <button
-      onClick={() => start(() => autoFillR32())}
-      disabled={pending}
-      className="btn-ghost shrink-0"
-    >
-      {pending ? "Filling…" : "Auto-fill R32"}
-    </button>
   );
 }
