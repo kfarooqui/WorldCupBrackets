@@ -112,6 +112,13 @@ export default function ResultsManager({
               <div className="space-y-2">
                 {matches
                   .filter((m) => m.stage === stage)
+                  .slice()
+                  .sort(
+                    (a, b) =>
+                      (a.match_date ?? "9999").localeCompare(b.match_date ?? "9999") ||
+                      kickoffMinutes(a.kickoff) - kickoffMinutes(b.kickoff) ||
+                      a.match_no - b.match_no,
+                  )
                   .map((m) => (
                     <ResultRow key={rowKey(m)} match={m} teams={teams} allowTeamEdit />
                   ))}
