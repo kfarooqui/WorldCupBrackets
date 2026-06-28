@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import type { Match, Team } from "@/lib/types";
-import { fmtDate, fixtureLine } from "@/lib/format";
+import { fmtDate, fixtureLine, kickoffMinutes } from "@/lib/format";
 import { GROUP_LETTERS } from "@/lib/worldcup-data";
 
 type View = "group" | "date";
@@ -64,6 +64,7 @@ export default function GroupMatchBrowser({
     .sort(
       (a, b) =>
         (a.match_date ?? "9999").localeCompare(b.match_date ?? "9999") ||
+        kickoffMinutes(a.kickoff) - kickoffMinutes(b.kickoff) ||
         a.match_no - b.match_no,
     )
     .reduce<{ date: string | null; items: Match[] }[]>((acc, m) => {

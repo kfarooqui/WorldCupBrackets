@@ -5,7 +5,7 @@ import type { Match, Team } from "@/lib/types";
 import { autoFillR32 } from "@/app/actions/results";
 import { sendDigest } from "@/app/actions/email";
 import { ROUND_LABEL } from "@/lib/scoring";
-import { fmtDate } from "@/lib/format";
+import { fmtDate, kickoffMinutes } from "@/lib/format";
 import ResultRow from "./ResultRow";
 
 const KO_STAGES = ["r32", "r16", "qf", "sf", "final"] as const;
@@ -46,6 +46,7 @@ export default function ResultsManager({
     .sort(
       (a, b) =>
         (a.match_date ?? "9999").localeCompare(b.match_date ?? "9999") ||
+        kickoffMinutes(a.kickoff) - kickoffMinutes(b.kickoff) ||
         a.match_no - b.match_no,
     )
     .reduce<{ date: string | null; items: Match[] }[]>((acc, m) => {
