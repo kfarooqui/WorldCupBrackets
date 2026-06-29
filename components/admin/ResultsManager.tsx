@@ -24,7 +24,7 @@ export default function ResultsManager({
   teams: Team[];
   pendingCount: number;
 }) {
-  const [tab, setTab] = useState<"group" | "knockout">("group");
+  const [tab, setTab] = useState<"group" | "knockout">("knockout");
   const [pending, start] = useTransition();
   const [digestMsg, setDigestMsg] = useState<string | null>(null);
 

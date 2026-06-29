@@ -68,7 +68,7 @@ export default function EveryonePicksTabs({
   meId: string;
   totalPlayers: number;
 }) {
-  const [view, setView] = useState<View>("group");
+  const [view, setView] = useState<View>("results");
 
   return (
     <div>
