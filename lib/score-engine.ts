@@ -152,7 +152,35 @@ export type PickResults = {
   groupScores: Record<number, { home: number; away: number }>;
   reached: Record<Round, number[]>;
   champion: number | null;
+  eliminated: number[];
 };
+
+/**
+ * Teams that are definitively knocked out: the loser of any finished knockout
+ * match, plus — once the R32 field is populated — any team that didn't qualify
+ * from its group. Used to color a pick red only when its fate is actually
+ * decided (vs. still alive with a match yet to play).
+ */
+export function eliminatedTeams(matches: Match[]): Set<number> {
+  const reality = deriveReality(matches);
+  const out = new Set<number>();
+  for (const m of matches) {
+    if (m.stage === "group") continue;
+    if (m.status !== "finished" || m.home_score == null || m.away_score == null) continue;
+    if (m.home_team_id == null || m.away_team_id == null) continue;
+    out.add(m.home_score >= m.away_score ? m.away_team_id : m.home_team_id);
+  }
+  if (reality.reached.r32.size > 0) {
+    const groupTeams = new Set<number>();
+    for (const m of matches) {
+      if (m.stage !== "group") continue;
+      if (m.home_team_id != null) groupTeams.add(m.home_team_id);
+      if (m.away_team_id != null) groupTeams.add(m.away_team_id);
+    }
+    for (const id of groupTeams) if (!reality.reached.r32.has(id)) out.add(id);
+  }
+  return out;
+}
 
 export function serializeReality(matches: Match[]): PickResults {
   const r = deriveReality(matches);
@@ -170,5 +198,6 @@ export function serializeReality(matches: Match[]): PickResults {
       final: [...r.reached.final],
     },
     champion: r.champion,
+    eliminated: [...eliminatedTeams(matches)],
   };
 }

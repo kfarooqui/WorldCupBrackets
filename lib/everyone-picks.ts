@@ -7,7 +7,7 @@ import type {
   ThirdPlacePrediction,
   BracketPrediction,
 } from "@/lib/types";
-import { deriveReality } from "@/lib/score-engine";
+import { deriveReality, eliminatedTeams } from "@/lib/score-engine";
 import {
   computeReachTallies,
   computeKnockoutResults,
@@ -99,7 +99,9 @@ export async function getEveryonePicksData(): Promise<EveryonePicksData> {
   });
 
   const groupMatches = allMatches.filter((m) => m.stage === "group");
-  const rungs = computeReachTallies(players, teamsById, reality);
+  // A team is "out" (red in the reach view) only once it's decided (see eliminatedTeams).
+  const eliminated = eliminatedTeams(allMatches);
+  const rungs = computeReachTallies(players, teamsById, reality, eliminated);
   const rounds = computeKnockoutResults(allMatches, players, teamsById);
 
   return {

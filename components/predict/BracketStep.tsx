@@ -31,6 +31,7 @@ export default function BracketStep({
   readOnly,
   reached,
   champion,
+  eliminated,
 }: {
   teamsById: Map<number, Team>;
   advancement: Advancement;
@@ -40,6 +41,7 @@ export default function BracketStep({
   readOnly: boolean;
   reached?: Record<Round, Set<number>>;
   champion?: number | null;
+  eliminated?: Set<number>;
 }) {
   const occ = computeOccupants(advancement, thirds, picks);
   const championPick = picks.final?.[0] ?? null;
@@ -52,6 +54,9 @@ export default function BracketStep({
     sf: "final",
     final: "champion",
   };
+  // Grade a pick only once it's decided: green when the team reached the next
+  // round, red only when the team is definitively out, otherwise no badge (the
+  // team is still alive with its match yet to play).
   const evalPick = (
     round: Round,
     team: number | null,
@@ -59,12 +64,14 @@ export default function BracketStep({
     if (team == null) return null;
     const target = NEXT[round];
     if (target === "champion") {
-      if (champion == null) return null;
-      return { ok: champion === team, pts: SCORING.champion };
+      if (champion === team) return { ok: true, pts: SCORING.champion };
+      if (champion != null || eliminated?.has(team)) return { ok: false, pts: SCORING.champion };
+      return null;
     }
-    const set = reached?.[target];
-    if (!set || set.size === 0) return null;
-    return { ok: set.has(team), pts: reachPoints(target) };
+    const pts = reachPoints(target);
+    if (reached?.[target]?.has(team)) return { ok: true, pts };
+    if (eliminated?.has(team)) return { ok: false, pts };
+    return null;
   };
   const champEval = evalPick("final", championPick);
 

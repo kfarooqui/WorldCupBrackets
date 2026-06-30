@@ -52,7 +52,7 @@ export default function KnockoutReachBrowser({
         </div>
         <p className="mb-3 text-xs text-[var(--muted)]">
           {rung.resolved
-            ? "Round played — ✓ reached, ✗ knocked out."
+            ? "✓ reached · ✗ out · uncolored = still to play."
             : "Not played yet — predictions only."}{" "}
           Tap a team to see who picked it.
         </p>
@@ -65,13 +65,13 @@ export default function KnockoutReachBrowser({
               const pct = Math.round((t.count / maxCount) * 100);
               const mine = meId ? t.pickers.some((p) => p.userId === meId) : false;
               const open = openTeam === t.team.id;
-              // Bar color: green if it actually reached, red if resolved-and-out,
-              // neutral accent before the round is played.
-              const bar = !rung.resolved
-                ? "bg-[var(--primary)]/30"
-                : t.reached
-                  ? "bg-green-500/35"
-                  : "bg-red-500/25";
+              // Bar color: green if it reached, red only once it's definitively out,
+              // neutral while it's still alive / its deciding match hasn't been played.
+              const bar = t.reached
+                ? "bg-green-500/35"
+                : t.out
+                  ? "bg-red-500/25"
+                  : "bg-[var(--primary)]/30";
               return (
                 <li key={t.team.id}>
                   <button
@@ -86,10 +86,10 @@ export default function KnockoutReachBrowser({
                     />
                     <span className="relative flex items-center justify-between gap-2">
                       <span className="flex items-center gap-2">
-                        {rung.resolved && (
+                        {(t.reached || t.out) && (
                           <span aria-hidden>{t.reached ? "✓" : "✗"}</span>
                         )}
-                        <span className={rung.resolved && !t.reached ? "line-through opacity-60" : ""}>
+                        <span className={t.out ? "line-through opacity-60" : ""}>
                           {t.team.flag_emoji} {t.team.name}
                         </span>
                         {mine && (
@@ -114,7 +114,7 @@ export default function KnockoutReachBrowser({
                           }`}
                         >
                           {p.name}
-                          {rung.resolved && t.reached ? " ✓" : ""}
+                          {t.reached ? " ✓" : ""}
                         </span>
                       ))}
                     </div>

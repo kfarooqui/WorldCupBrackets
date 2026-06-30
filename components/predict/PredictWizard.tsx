@@ -75,6 +75,7 @@ export default function PredictWizard(props: {
     }),
     [props.results],
   );
+  const eliminatedSet = useMemo(() => new Set(props.results.eliminated), [props.results]);
 
   // ── State ─────────────────────────────────────────────────────────────
   const [matchPicks, setMatchPicks] = useState<Record<number, MatchPick>>(() => {
@@ -398,6 +399,7 @@ export default function PredictWizard(props: {
           readOnly={readOnly}
           reached={reachedSets}
           champion={props.results.champion}
+          eliminated={eliminatedSet}
         />
       )}
 

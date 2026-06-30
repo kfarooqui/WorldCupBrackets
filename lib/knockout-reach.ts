@@ -53,8 +53,11 @@ export type TeamTally = {
   team: Team;
   pickers: Picker[];
   count: number;
-  /** Did the team actually achieve this rung? Only meaningful when resolved. */
+  /** Did the team actually achieve this rung? (→ green ✓) */
   reached: boolean;
+  /** Eliminated before reaching this rung — definitively out (→ red ✗). Otherwise the
+   *  team is still alive / its deciding match hasn't been played (→ neutral, no mark). */
+  out: boolean;
 };
 
 export type RungTally = {
@@ -113,6 +116,7 @@ export function computeReachTallies(
   players: PlayerPredictions[],
   teamsById: Map<number, Team>,
   reality: ReachReality,
+  eliminated: Set<number> = new Set(),
 ): RungTally[] {
   return REACH_RUNGS.map(({ key, label, short, points }) => {
     const { set: realitySet, resolved } = realityForRung(key, reality);
@@ -130,9 +134,9 @@ export function computeReachTallies(
     const teams: TeamTally[] = [...byTeam.entries()]
       .map(([teamId, pickers]) => {
         const team = teamsById.get(teamId);
-        return team
-          ? { team, pickers, count: pickers.length, reached: realitySet.has(teamId) }
-          : null;
+        if (!team) return null;
+        const reached = realitySet.has(teamId);
+        return { team, pickers, count: pickers.length, reached, out: !reached && eliminated.has(teamId) };
       })
       .filter((t): t is TeamTally => t !== null)
       .sort((a, b) => b.count - a.count || a.team.name.localeCompare(b.team.name));
