@@ -71,7 +71,7 @@ export default function KnockoutReachBrowser({
                 ? "bg-green-500/35"
                 : t.out
                   ? "bg-red-500/25"
-                  : "bg-[var(--primary)]/30";
+                  : "bg-[var(--muted)]/25";
               return (
                 <li key={t.team.id}>
                   <button
