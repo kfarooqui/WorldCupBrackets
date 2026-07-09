@@ -220,7 +220,7 @@ const COMMENTARY_MODEL = "claude-haiku-4-5";
 const COMMENTARY_TIMEOUT_MS = 9000;
 
 /**
- * One batched Claude (Haiku) call that writes a John Oliver-style quip for
+ * One batched Claude (Haiku) call that writes a Ron Burgundy-style quip for
  * every queued result in a single request. Returns a map of match id → quip,
  * or null if ANTHROPIC_API_KEY is unset or the call errors/times out — callers
  * fall back to the static matchCommentary() so the digest always sends.
@@ -269,9 +269,9 @@ export async function aiCommentary(
         model: COMMENTARY_MODEL,
         max_tokens: 2048,
         system:
-          "You are a sports comedian writing in the style of John Oliver's Last Week Tonight rants — wry, " +
-          "with mounting incredulity, an absurd extended simile or metaphor, and a tangent that escalates " +
-          "beyond reason. " +
+          "You are a sports comedian writing in the over-confident, absurdist style of Will Ferrell's Ron " +
+          "Burgundy — a self-serious anchorman who delivers ridiculous non-sequiturs with total conviction, " +
+          "prone to grandiose declarations, oddly specific boasts, and cheerfully dumb tangents. " +
           "For each soccer result given, invent ONE funny, wholly made-up 'expert' quip based only on the " +
           "scoreline — absurd hyperbole, mock-grandiosity, self-deprecation, oddly specific fake details. " +
           "Keep it light and clean: no profanity, no real-world politics or news, nothing mean about real people. One or two " +
@@ -390,7 +390,7 @@ export async function sendMatchDayDigest(): Promise<{
 
 /* ──────────────────────────────────────────────────────────────────────────
  * Daily morning briefing — yesterday's results recapped + today's fixtures
- * "predicted", all in the same fabricated John Oliver voice as the digest.
+ * "predicted", all in the same fabricated Ron Burgundy voice as the digest.
  * ────────────────────────────────────────────────────────────────────────── */
 
 /** Today's date in US Eastern time as "YYYY-MM-DD" (the tournament's local day). */
@@ -404,7 +404,7 @@ function prevDay(ymd: string): string {
   return new Date(Date.UTC(y, m - 1, d) - 86_400_000).toISOString().slice(0, 10);
 }
 
-/** Static, no-API fallback "prediction" for one upcoming fixture (John Oliver-style). */
+/** Static, no-API fallback "prediction" for one upcoming fixture (Ron Burgundy-style). */
 export function matchPrediction(m: Match, teams: Map<number, Team>): string {
   const home = teams.get(m.home_team_id ?? -1)?.name ?? "Someone";
   const away = teams.get(m.away_team_id ?? -1)?.name ?? "Someone";
@@ -418,7 +418,7 @@ export function matchPrediction(m: Match, teams: Map<number, Team>): string {
 }
 
 /**
- * One batched Claude (Haiku) call that writes a John Oliver-style mock
+ * One batched Claude (Haiku) call that writes a Ron Burgundy-style mock
  * "prediction" for each of today's upcoming fixtures — based only on the team
  * names, since no score exists yet. Same key/fallback/timeout contract as
  * aiCommentary(): returns match id → prediction, or null on any failure so
@@ -464,9 +464,9 @@ export async function aiPredictions(
         model: COMMENTARY_MODEL,
         max_tokens: 2048,
         system:
-          "You are a sports comedian writing in the style of John Oliver's Last Week Tonight rants — wry, " +
-          "with mounting incredulity, an absurd extended simile or metaphor, and a tangent that escalates " +
-          "beyond reason. " +
+          "You are a sports comedian writing in the over-confident, absurdist style of Will Ferrell's Ron " +
+          "Burgundy — a self-serious anchorman who delivers ridiculous non-sequiturs with total conviction, " +
+          "prone to grandiose declarations, oddly specific boasts, and cheerfully dumb tangents. " +
           "For each UPCOMING soccer fixture given, invent ONE funny, wholly made-up 'expert' prediction based only " +
           "on the two team names — a confident, absurd forecast played for laughs (no real scoreline exists yet). " +
           "Keep it light and clean: no profanity, no real-world politics or news, nothing mean about real people. One or two " +
@@ -517,7 +517,7 @@ export function resultsTheme(matches: Match[]): string {
 /**
  * One batched Claude (Haiku) call that reads ALL of yesterday's results and
  * returns a SINGLE faux-insightful "what did we learn" blurb (3-5 sentences),
- * John Oliver-style. Returns null on any failure → callers fall back to resultsTheme().
+ * Ron Burgundy-style. Returns null on any failure → callers fall back to resultsTheme().
  */
 export async function aiResultsTheme(
   matches: Match[],
@@ -546,9 +546,9 @@ export async function aiResultsTheme(
         model: COMMENTARY_MODEL,
         max_tokens: 512,
         system:
-          "You are a sports comedian writing in the style of John Oliver's Last Week Tonight rants — wry, " +
-          "with mounting incredulity, an absurd extended simile or metaphor, and a tangent that escalates " +
-          "beyond reason. " +
+          "You are a sports comedian writing in the over-confident, absurdist style of Will Ferrell's Ron " +
+          "Burgundy — a self-serious anchorman who delivers ridiculous non-sequiturs with total conviction, " +
+          "prone to grandiose declarations, oddly specific boasts, and cheerfully dumb tangents. " +
           "You will be given ALL of yesterday's soccer results at once. Write ONE single 'what did we learn " +
           "yesterday' blurb that confidently claims to have spotted a grand, sweeping theme across the results — " +
           "analytical-sounding and utterly nonsensical, faux-insightful rather than a game-by-game recap. " +
