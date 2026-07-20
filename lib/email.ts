@@ -2,6 +2,7 @@ import nodemailer from "nodemailer";
 import Anthropic from "@anthropic-ai/sdk";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { fixtureLine } from "@/lib/format";
+import { getLeaderboard, type LeaderboardRow } from "@/lib/leaderboard";
 import type { Match, Team, Profile } from "@/lib/types";
 
 /**
@@ -305,16 +306,232 @@ export async function aiCommentary(
   }
 }
 
+/* ──────────────────────────────────────────────────────────────────────────
+ * Tournament finale — when the Final is among the queued results, the digest
+ * grows a wrap-up: a Ron Burgundy take on the Final and on the whole World Cup,
+ * plus the two final leaderboards (Official + Participation trophy).
+ * ────────────────────────────────────────────────────────────────────────── */
+
+/** Everything the finale section needs. Assembled server-side, rendered purely. */
+export type Finale = {
+  final: Match;
+  wrap: { final: string; tournament: string };
+  rows: LeaderboardRow[];
+};
+
+/**
+ * Champion / runner-up of a finished final, using the same "home_score >=
+ * away_score wins" rule the rest of the app uses to advance knockout winners
+ * (see app/actions/results.ts). There is no separate penalty field, so the
+ * admin records the shootout winner as the higher score.
+ */
+function decideChampion(
+  final: Match,
+  teams: Map<number, Team>,
+): { champion: Team | null; runnerUp: Team | null } {
+  const home = teams.get(final.home_team_id ?? -1) ?? null;
+  const away = teams.get(final.away_team_id ?? -1) ?? null;
+  const homeWon = (final.home_score ?? 0) >= (final.away_score ?? 0);
+  return homeWon ? { champion: home, runnerUp: away } : { champion: away, runnerUp: home };
+}
+
+/** Static, no-API fallback wrap-up (Ron Burgundy-style): the final, then the tournament. */
+export function finalWrap(
+  final: Match,
+  teams: Map<number, Team>,
+): { final: string; tournament: string } {
+  const { champion, runnerUp } = decideChampion(final, teams);
+  const champ = champion?.name ?? "Somebody";
+  const runner = runnerUp?.name ?? "the other lot";
+  const hi = Math.max(final.home_score ?? 0, final.away_score ?? 0);
+  const lo = Math.min(final.home_score ?? 0, final.away_score ?? 0);
+  return {
+    final:
+      `And that is the ballgame. ${champ} beat ${runner} ${hi}–${lo} to win the whole enchilada — ` +
+      `a result I called with total confidence approximately one second after it occurred. ${runner} ` +
+      `played their hearts out and will receive a lovely fruit basket and a firm handshake.`,
+    tournament:
+      `What a tournament. Forty-eight teams entered, one walked away immortal, and I narrated all of it ` +
+      `from a chair. We saw goals, we saw drama, we saw a grown man weep into a scarf — and that was just ` +
+      `my living room. ${champ} are your champions, the standings below are final, and I remain, as ever, ` +
+      `undefeated as a pundit. It's science. Stay classy, everybody.`,
+  };
+}
+
+/**
+ * One batched Claude (Haiku) call that writes a Ron Burgundy wrap-up of the
+ * Final AND the tournament as a whole. Same key/fallback/timeout contract as
+ * aiCommentary(): returns { final, tournament }, or null on any failure so
+ * callers fall back to finalWrap(). Server-side only.
+ */
+export async function aiFinalWrap(
+  final: Match,
+  teams: Map<number, Team>,
+): Promise<{ final: string; tournament: string } | null> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return null;
+
+  const { champion, runnerUp } = decideChampion(final, teams);
+  const champ = champion?.name ?? "Someone";
+  const runner = runnerUp?.name ?? "Someone";
+  const hi = Math.max(final.home_score ?? 0, final.away_score ?? 0);
+  const lo = Math.min(final.home_score ?? 0, final.away_score ?? 0);
+
+  const schema = {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      final: { type: "string" },
+      tournament: { type: "string" },
+    },
+    required: ["final", "tournament"],
+  };
+
+  try {
+    const client = new Anthropic({ apiKey, maxRetries: 1 });
+    const response = await client.messages.create(
+      {
+        model: COMMENTARY_MODEL,
+        max_tokens: 1024,
+        system:
+          "You are a sports comedian writing in the over-confident, absurdist style of Will Ferrell's Ron " +
+          "Burgundy — a self-serious anchorman who delivers ridiculous non-sequiturs with total conviction, " +
+          "prone to grandiose declarations, oddly specific boasts, and cheerfully dumb tangents. " +
+          "The FIFA World Cup 2026 has just ended. Write TWO short blurbs. 'final': a brief, funny wrap-up of the " +
+          "final result itself (2-3 sentences). 'tournament': his grand, sweeping, faux-profound thoughts on the " +
+          "whole World Cup as a spectacle (3-4 sentences), NOT a game-by-game recap. Absurd hyperbole and " +
+          "mock-grandiosity encouraged. Keep it light and clean: no profanity, no real-world politics or news, " +
+          "nothing mean about real people.",
+        messages: [
+          {
+            role: "user",
+            content:
+              `The final: ${champ} beat ${runner} ${hi}–${lo} to become World Cup 2026 champions. ` +
+              `Write the 'final' and 'tournament' blurbs.`,
+          },
+        ],
+        output_config: { format: { type: "json_schema", schema } },
+      },
+      { timeout: COMMENTARY_TIMEOUT_MS },
+    );
+
+    const block = response.content.find((b) => b.type === "text");
+    if (!block || block.type !== "text") return null;
+    const parsed = JSON.parse(block.text) as { final?: string; tournament?: string };
+    if (parsed.final?.trim() && parsed.tournament?.trim()) {
+      return { final: parsed.final.trim(), tournament: parsed.tournament.trim() };
+    }
+    return null;
+  } catch {
+    // Any failure (no key, timeout, rate limit, bad JSON) → static fallback.
+    return null;
+  }
+}
+
+/**
+ * Assemble the finale payload for the digest: the Ron Burgundy wrap (AI with a
+ * static fallback) plus the final leaderboard rows. Runs the Claude call and the
+ * leaderboard query in parallel. Server-side (hits the DB + Anthropic).
+ */
+export async function buildFinale(final: Match, teamMap: Map<number, Team>): Promise<Finale> {
+  const [wrap, board] = await Promise.all([
+    aiFinalWrap(final, teamMap).then((w) => w ?? finalWrap(final, teamMap)),
+    getLeaderboard(),
+  ]);
+  return { final, wrap, rows: board.rows };
+}
+
+/** One standings table (Official or Participation), dense-ranked by `totalOf`. Pure. */
+function leaderboardTable(
+  rows: LeaderboardRow[],
+  totalOf: (r: LeaderboardRow) => number,
+  groupOf: (r: LeaderboardRow) => number,
+): string {
+  const sorted = [...rows].sort((a, b) => totalOf(b) - totalOf(a));
+  let rank = 0;
+  let prev = Number.NaN;
+  const body = sorted
+    .map((r, i) => {
+      const total = totalOf(r);
+      if (total !== prev) {
+        rank = i + 1;
+        prev = total;
+      }
+      const medal = rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : String(rank);
+      const name = escapeHtml(`${r.profile.first_name} ${r.profile.last_name}`.trim() || "—");
+      return (
+        `<tr>` +
+        `<td style="padding:6px 8px;font-weight:700">${medal}</td>` +
+        `<td style="padding:6px 8px">${name}</td>` +
+        `<td style="padding:6px 8px;text-align:right;color:#666">${groupOf(r)}</td>` +
+        `<td style="padding:6px 8px;text-align:right;color:#666">${r.score.reach}</td>` +
+        `<td style="padding:6px 8px;text-align:right;color:#666">${r.score.champion}</td>` +
+        `<td style="padding:6px 8px;text-align:right;font-weight:800;color:#16a34a">${total}</td>` +
+        `</tr>`
+      );
+    })
+    .join("");
+  const empty =
+    `<tr><td colspan="6" style="padding:12px;text-align:center;color:#888">No players yet.</td></tr>`;
+  return (
+    `<table style="width:100%;border-collapse:collapse;font-size:14px">` +
+    `<thead><tr style="text-align:left;color:#888;border-bottom:1px solid #ddd">` +
+    `<th style="padding:6px 8px">#</th><th style="padding:6px 8px">Player</th>` +
+    `<th style="padding:6px 8px;text-align:right">Group</th>` +
+    `<th style="padding:6px 8px;text-align:right">Bracket</th>` +
+    `<th style="padding:6px 8px;text-align:right">🏆</th>` +
+    `<th style="padding:6px 8px;text-align:right">Total</th>` +
+    `</tr></thead><tbody>${body || empty}</tbody></table>`
+  );
+}
+
+/**
+ * The finale section: champion headline + final scoreline, the Ron Burgundy
+ * wrap (final, then the whole tournament), and the two final leaderboards.
+ * Participation = Official minus exact-scoreline bonuses (mirrors the site's
+ * LeaderboardTable). Pure — no DB or network.
+ */
+function buildFinaleHtml(finale: Finale, teamMap: Map<number, Team>): string {
+  const { final, wrap, rows } = finale;
+  const { champion } = decideChampion(final, teamMap);
+  const champLine = champion
+    ? `${champion.flag_emoji} ${champion.name} are your World Cup 2026 champions`
+    : `We have a World Cup 2026 champion`;
+  const official = leaderboardTable(rows, (r) => r.score.total, (r) => r.score.group);
+  const participation = leaderboardTable(
+    rows,
+    (r) => r.score.total - r.score.groupExact,
+    (r) => r.score.group - r.score.groupExact,
+  );
+  return (
+    `<div style="margin-top:8px;padding-top:12px;border-top:3px solid #16a34a">` +
+    `<h2 style="margin-bottom:4px">🏆 ${escapeHtml(champLine)}</h2>` +
+    `<p style="font-size:16px;margin:0 0 12px">${resultLine(final, teamMap)}</p>` +
+    `<p style="color:#555;font-style:italic;font-size:15px;line-height:1.6;margin-top:0">${escapeHtml(wrap.final)}</p>` +
+    `<h3 style="margin-bottom:4px">Ron's final word on the tournament</h3>` +
+    `<p style="color:#555;font-style:italic;font-size:15px;line-height:1.6;margin-top:0">${escapeHtml(wrap.tournament)}</p>` +
+    `<h3 style="margin:24px 0 6px">Final standings — Official</h3>` +
+    official +
+    `<h3 style="margin:24px 0 2px">🏅 Final standings — Participation trophy</h3>` +
+    `<p style="color:#888;font-size:12px;margin:2px 0 8px">Exact-scoreline bonuses removed — points for calling each result, just not the exact score.</p>` +
+    participation +
+    `</div>`
+  );
+}
+
 /**
  * Render the results-digest email body. Each result gets its AI quip when
  * present (keyed by match id), otherwise the static matchCommentary() fallback.
- * Pure — no DB or network — so it's safe to call from a preview script.
+ * When `finale` is supplied (the Final was in the batch), the tournament wrap-up
+ * and final standings are appended. Pure — no DB or network — so it's safe to
+ * call from a preview script.
  */
 export function buildDigestHtml(
   matches: Match[],
   teamMap: Map<number, Team>,
   ai: Map<number, string> | null,
   siteUrl: string,
+  finale?: Finale | null,
 ): string {
   const lines = matches
     .map((m) => {
@@ -326,12 +543,17 @@ export function buildDigestHtml(
       );
     })
     .join("");
+  const resultsBlock = matches.length
+    ? `<h2 style="margin-bottom:2px">⚽ World Cup 2026 — latest results</h2>` +
+      `<p style="color:#666;font-size:14px;margin-top:0">With expert commentary that is 100% fabricated and should not be wagered upon.</p>` +
+      `<ul style="font-size:16px;line-height:1.8;padding-left:20px">${lines}</ul>`
+    : "";
+  const finaleBlock = finale ? buildFinaleHtml(finale, teamMap) : "";
   return `
     <div style="font-family:system-ui,sans-serif;max-width:560px;margin:auto">
-      <h2>⚽ World Cup 2026 — latest results</h2>
-      <p style="color:#666;font-size:14px;margin-top:-6px">With expert commentary that is 100% fabricated and should not be wagered upon.</p>
-      <ul style="font-size:16px;line-height:1.8;padding-left:20px">${lines}</ul>
-      <p><a href="${siteUrl}/leaderboard"
+      ${resultsBlock}
+      ${finaleBlock}
+      <p style="margin-top:20px"><a href="${siteUrl}/leaderboard"
          style="display:inline-block;background:#16a34a;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">
          View the leaderboard →</a></p>
       <p style="color:#888;font-size:12px">You're receiving this because you're in the pool.</p>
@@ -362,9 +584,29 @@ export async function sendMatchDayDigest(): Promise<{
   ]);
 
   const teamMap = new Map((teams as Team[]).map((t) => [t.id, t]));
-  // One batched Claude call for all results; null map → static fallback per match.
-  const ai = await aiCommentary(matches as Match[], teamMap);
-  const html = buildDigestHtml(matches as Match[], teamMap, ai, emailSite());
+  const allMatches = (matches as Match[]) ?? [];
+
+  // If the Final is in this batch, it gets the tournament wrap-up + standings
+  // instead of a plain per-match quip, so pull it out of the results list.
+  const finalMatch = allMatches.find((m) => m.stage === "final");
+  const resultMatches = finalMatch
+    ? allMatches.filter((m) => m.id !== finalMatch.id)
+    : allMatches;
+
+  // Per-match quips and the finale (wrap + leaderboards) run concurrently to
+  // stay under the serverless time budget.
+  const [ai, finale] = await Promise.all([
+    aiCommentary(resultMatches, teamMap),
+    finalMatch ? buildFinale(finalMatch, teamMap) : Promise.resolve(null),
+  ]);
+  const html = buildDigestHtml(resultMatches, teamMap, ai, emailSite(), finale);
+
+  const champion = finalMatch ? decideChampion(finalMatch, teamMap).champion : null;
+  const subject = finalMatch
+    ? champion
+      ? `🏆 ${champion.name} win the World Cup — final results & standings`
+      : `🏆 World Cup final — results & standings`
+    : `⚽ World Cup results — ${allMatches.length} new`;
 
   const from = fromAddress();
   const recipients = (profiles as Profile[]).filter((p) => p.email);
@@ -372,12 +614,7 @@ export async function sendMatchDayDigest(): Promise<{
   let sent = 0;
   for (const p of recipients) {
     try {
-      await tx.sendMail({
-        from,
-        to: p.email,
-        subject: `⚽ World Cup results — ${(matches as Match[]).length} new`,
-        html,
-      });
+      await tx.sendMail({ from, to: p.email, subject, html });
       sent++;
     } catch {
       // skip failed recipient, keep going

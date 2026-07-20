@@ -13,8 +13,16 @@
  * Safe to delete — it's a dev-only preview, not part of the app.
  */
 import fs from "node:fs";
-import { aiCommentary, buildDigestHtml, matchCommentary } from "../lib/email";
-import type { Match, Team } from "../lib/types";
+import {
+  aiCommentary,
+  aiFinalWrap,
+  finalWrap,
+  buildDigestHtml,
+  matchCommentary,
+  type Finale,
+} from "../lib/email";
+import type { Match, Team, Profile } from "../lib/types";
+import type { LeaderboardRow } from "../lib/leaderboard";
 
 const team = (id: number, name: string, flag: string): Team => ({
   id,
@@ -65,6 +73,52 @@ const matches: Match[] = fixtures.map(([id, home, away, hs]) => ({
   status: "finished",
 }));
 
+// The Final — drives the tournament wrap-up + standings section.
+const finalMatch: Match = {
+  id: 104,
+  stage: "final",
+  group_letter: null,
+  match_no: 104,
+  slot_label: "Final",
+  home_team_id: 1, // Brazil
+  away_team_id: 4, // Germany
+  kickoff_at: null,
+  match_date: null,
+  kickoff: null,
+  venue: "MetLife Stadium",
+  city: "East Rutherford",
+  home_score: 2,
+  away_score: 1,
+  status: "finished",
+};
+
+// Fake final standings so the two leaderboards render without touching the DB.
+const player = (id: string, first: string, last: string): Profile => ({
+  id,
+  first_name: first,
+  last_name: last,
+  phone: "",
+  email: "",
+  status: "approved",
+  role: "user",
+  created_at: "",
+  sign_in_count: 0,
+});
+// [group, groupExact, reach, champion] — total is the sum; participation drops groupExact.
+const fakeScores: Array<[string, string, [number, number, number, number]]> = [
+  ["Ron", "Burgundy", [22, 8, 24, 6]],
+  ["Veronica", "Corningstone", [25, 3, 21, 6]],
+  ["Brick", "Tamland", [18, 6, 20, 0]],
+  ["Brian", "Fantana", [15, 2, 14, 6]],
+  ["Champ", "Kind", [12, 0, 9, 0]],
+];
+const rows: LeaderboardRow[] = fakeScores.map(([first, last, [group, groupExact, reach, champion]], i) => ({
+  profile: player(`u${i}`, first, last),
+  score: { group, groupExact, reach, champion, total: group + reach + champion },
+  submitted: true,
+  rank: i + 1,
+}));
+
 async function main() {
   const teamMap = new Map(teams.map((t) => [t.id, t]));
 
@@ -86,10 +140,16 @@ async function main() {
     console.log(`         ${quip}\n`);
   }
 
-  const html = buildDigestHtml(matches, teamMap, ai, "https://example.com");
+  // Build the tournament wrap-up (AI with static fallback) for the finale section.
+  const wrap = (await aiFinalWrap(finalMatch, teamMap)) ?? finalWrap(finalMatch, teamMap);
+  const wrapSource = process.env.ANTHROPIC_API_KEY ? "AI " : "static";
+  console.log(`[${wrapSource}] Final wrap:\n  ${wrap.final}\n[${wrapSource}] Tournament:\n  ${wrap.tournament}\n`);
+  const finale: Finale = { final: finalMatch, wrap, rows };
+
+  const html = buildDigestHtml(matches, teamMap, ai, "https://example.com", finale);
   const out = "digest-preview.html";
   fs.writeFileSync(out, html);
-  console.log(`Wrote ${out} — open it in a browser to see the full email.`);
+  console.log(`Wrote ${out} — open it in a browser to see the full email (incl. finale + standings).`);
 }
 
 main().catch((err) => {
